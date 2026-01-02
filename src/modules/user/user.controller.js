@@ -49,7 +49,7 @@ async function updateProfile(req, res) {
         isProfileComplete: true
       },
       { new: true }
-    );
+    ).select("name email phone avatar isProfileComplete");
 
     res.json({ success: true, user });
   } catch (err) {
