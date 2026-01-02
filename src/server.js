@@ -9,9 +9,17 @@ const startServer = async () => {
     await connectDB()
     console.log("MongoDB connected")
 
-    // 2️⃣ OPTIONAL: seed shops (run once or behind env flag)
-    const seedShops = require("./modules/shop/shop.seed")
-    await seedShops()
+    // 2️⃣ OPTIONAL: seed shops (only if SEED_SHOPS env var is set)
+    if (process.env.SEED_SHOPS === "true") {
+      try {
+        const seedShops = require("./modules/shop/shop.seed")
+        await seedShops()
+        console.log("✅ Shops seeded successfully")
+      } catch (seedError) {
+        console.warn("⚠️ Shop seeding failed (non-critical):", seedError.message)
+        // Don't crash the server if seeding fails
+      }
+    }
 
     // 3️⃣ Start server AFTER DB is ready
     app.listen(PORT, () => {
