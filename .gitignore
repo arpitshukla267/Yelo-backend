@@ -43,3 +43,7 @@ firebaseServiceAccount.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+GOOGLE_MAPS_SETUP.md
+RENDER_DEPLOYMENT_FIX.md
+INTEGRATION_SUMMARY.md
