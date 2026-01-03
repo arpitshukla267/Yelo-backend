@@ -1,15 +1,9 @@
 /**
  * Google Maps Geocoding Service
  * Handles server-side geocoding requests
- * 
- * Note: Requires Node.js 18+ (for native fetch support)
- * If using Node.js < 18, install node-fetch: npm install node-fetch
  */
 
-// Check if fetch is available (Node.js 18+ has native fetch)
-if (typeof fetch === 'undefined') {
-  console.warn('Warning: fetch is not available. Please use Node.js 18+ or install node-fetch package.');
-}
+const axios = require('axios');
 
 /**
  * Get Google Maps API key from environment
@@ -17,7 +11,7 @@ if (typeof fetch === 'undefined') {
 function getGoogleMapsApiKey() {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
-    throw new Error('Google Maps API key is not configured in backend environment variables');
+    throw new Error('Google Maps API key is not configured in backend environment variables. Please add GOOGLE_MAPS_API_KEY to your environment variables.');
   }
   return apiKey;
 }
@@ -33,13 +27,12 @@ async function reverseGeocode(latitude, longitude) {
 
   try {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
-    const response = await fetch(url);
+    
+    const response = await axios.get(url, {
+      timeout: 10000, // 10 second timeout
+    });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = response.data;
 
     // Handle different API response statuses
     if (data.status === 'ZERO_RESULTS') {
@@ -92,7 +85,26 @@ async function reverseGeocode(latitude, longitude) {
     };
   } catch (error) {
     console.error('Reverse geocoding error:', error);
-    throw error;
+    
+    // Handle axios-specific errors
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      const status = error.response.status;
+      const data = error.response.data;
+      console.error('Google Maps API HTTP error:', status, data);
+      throw new Error(`Google Maps API error: ${status} - ${data?.error_message || 'Unknown error'}`);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response from Google Maps API:', error.message);
+      throw new Error('Failed to connect to Google Maps API. Please check your internet connection and try again.');
+    } else if (error.code === 'ECONNABORTED') {
+      // Request timeout
+      throw new Error('Request to Google Maps API timed out. Please try again.');
+    } else {
+      // Something happened in setting up the request
+      throw error;
+    }
   }
 }
 
@@ -107,13 +119,12 @@ async function geocodeAddress(address) {
   try {
     const encodedAddress = encodeURIComponent(address);
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`;
-    const response = await fetch(url);
+    
+    const response = await axios.get(url, {
+      timeout: 10000, // 10 second timeout
+    });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = response.data;
 
     // Handle different API response statuses
     if (data.status === 'ZERO_RESULTS') {
@@ -138,7 +149,26 @@ async function geocodeAddress(address) {
     };
   } catch (error) {
     console.error('Geocoding error:', error);
-    throw error;
+    
+    // Handle axios-specific errors
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      const status = error.response.status;
+      const data = error.response.data;
+      console.error('Google Maps API HTTP error:', status, data);
+      throw new Error(`Google Maps API error: ${status} - ${data?.error_message || 'Unknown error'}`);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response from Google Maps API:', error.message);
+      throw new Error('Failed to connect to Google Maps API. Please check your internet connection and try again.');
+    } else if (error.code === 'ECONNABORTED') {
+      // Request timeout
+      throw new Error('Request to Google Maps API timed out. Please try again.');
+    } else {
+      // Something happened in setting up the request
+      throw error;
+    }
   }
 }
 
