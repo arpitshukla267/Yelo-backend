@@ -24,5 +24,6 @@ router.use("/cart", require("../modules/cart/cart.routes"))
 router.use("/orders", require("../modules/order/order.routes"))
 router.use("/auth", require("../modules/auth/auth.routes"))
 router.use("/users", require("../modules/user/user.routes"))
+router.use("/geocoding", require("../modules/geocoding/geocoding.routes"))
 
 module.exports = router

@@ -1,0 +1,149 @@
+/**
+ * Google Maps Geocoding Service
+ * Handles server-side geocoding requests
+ * 
+ * Note: Requires Node.js 18+ (for native fetch support)
+ * If using Node.js < 18, install node-fetch: npm install node-fetch
+ */
+
+// Check if fetch is available (Node.js 18+ has native fetch)
+if (typeof fetch === 'undefined') {
+  console.warn('Warning: fetch is not available. Please use Node.js 18+ or install node-fetch package.');
+}
+
+/**
+ * Get Google Maps API key from environment
+ */
+function getGoogleMapsApiKey() {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    throw new Error('Google Maps API key is not configured in backend environment variables');
+  }
+  return apiKey;
+}
+
+/**
+ * Reverse geocode: Convert latitude/longitude to address
+ * @param {number} latitude
+ * @param {number} longitude
+ * @returns {Promise<{address: string, city: string, state: string, pincode: string, fullAddress: string}>}
+ */
+async function reverseGeocode(latitude, longitude) {
+  const apiKey = getGoogleMapsApiKey();
+
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Handle different API response statuses
+    if (data.status === 'ZERO_RESULTS') {
+      throw new Error('No address found for this location. Please try selecting a different location.');
+    } else if (data.status === 'OVER_QUERY_LIMIT') {
+      throw new Error('Geocoding API quota exceeded. Please try again later.');
+    } else if (data.status === 'REQUEST_DENIED') {
+      console.error('Geocoding API request denied. Status:', data.status, 'Error message:', data.error_message);
+      throw new Error(`Geocoding API access denied: ${data.error_message || 'Please check API key configuration and ensure Geocoding API is enabled.'}`);
+    } else if (data.status === 'INVALID_REQUEST') {
+      console.error('Invalid geocoding request. Status:', data.status, 'Error message:', data.error_message);
+      throw new Error(`Invalid location coordinates: ${data.error_message || 'Please try again.'}`);
+    } else if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+      console.error('Geocoding API error. Status:', data.status, 'Error message:', data.error_message);
+      throw new Error(`Failed to reverse geocode location: ${data.status}${data.error_message ? ` - ${data.error_message}` : ''}`);
+    }
+
+    const result = data.results[0];
+    const addressComponents = result.address_components;
+
+    // Extract address components
+    let address = result.formatted_address || '';
+    let city = '';
+    let state = '';
+    let pincode = '';
+
+    addressComponents.forEach((component) => {
+      const types = component.types;
+
+      if (types.includes('postal_code')) {
+        pincode = component.long_name;
+      } else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+        city = component.long_name;
+      } else if (types.includes('administrative_area_level_1')) {
+        state = component.long_name;
+      }
+    });
+
+    // Extract street address (first line)
+    const streetNumber = addressComponents.find(c => c.types.includes('street_number'))?.long_name || '';
+    const route = addressComponents.find(c => c.types.includes('route'))?.long_name || '';
+    const streetAddress = [streetNumber, route].filter(Boolean).join(' ');
+
+    return {
+      address: streetAddress || address.split(',')[0] || '',
+      city: city || '',
+      state: state || '',
+      pincode: pincode || '',
+      fullAddress: address,
+    };
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Geocode: Convert address to latitude/longitude
+ * @param {string} address
+ * @returns {Promise<{latitude: number, longitude: number}>}
+ */
+async function geocodeAddress(address) {
+  const apiKey = getGoogleMapsApiKey();
+
+  try {
+    const encodedAddress = encodeURIComponent(address);
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Handle different API response statuses
+    if (data.status === 'ZERO_RESULTS') {
+      throw new Error('No location found for this address. Please try a different address.');
+    } else if (data.status === 'OVER_QUERY_LIMIT') {
+      throw new Error('Geocoding API quota exceeded. Please try again later.');
+    } else if (data.status === 'REQUEST_DENIED') {
+      console.error('Geocoding API request denied. Status:', data.status, 'Error message:', data.error_message);
+      throw new Error(`Geocoding API access denied: ${data.error_message || 'Please check API key configuration and ensure Geocoding API is enabled.'}`);
+    } else if (data.status === 'INVALID_REQUEST') {
+      console.error('Invalid geocoding request. Status:', data.status, 'Error message:', data.error_message);
+      throw new Error(`Invalid address format: ${data.error_message || 'Please try again.'}`);
+    } else if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+      console.error('Geocoding API error. Status:', data.status, 'Error message:', data.error_message);
+      throw new Error(`Failed to geocode address: ${data.status}${data.error_message ? ` - ${data.error_message}` : ''}`);
+    }
+
+    const location = data.results[0].geometry.location;
+    return {
+      latitude: location.lat,
+      longitude: location.lng,
+    };
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    throw error;
+  }
+}
+
+module.exports = {
+  reverseGeocode,
+  geocodeAddress,
+};
+
