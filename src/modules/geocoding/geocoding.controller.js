@@ -40,9 +40,16 @@ async function reverseGeocode(req, res) {
     });
   } catch (error) {
     console.error('Reverse geocoding controller error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    });
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to reverse geocode location',
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
     });
   }
 }
@@ -70,9 +77,16 @@ async function geocodeAddress(req, res) {
     });
   } catch (error) {
     console.error('Geocoding controller error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    });
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to geocode address',
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
     });
   }
 }
