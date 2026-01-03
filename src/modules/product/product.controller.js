@@ -1,5 +1,5 @@
 const Product = require("./product.model")
-const { getProductsByShop } = require("./product.service")
+const { getProductsByShop, createProduct: createProductService } = require("./product.service")
 const { ensureCategory } = require("../category/category.service")
 
 // GET all products (with filters and pagination)
@@ -256,7 +256,9 @@ exports.createProduct = async (req, res) => {
       await ensureCategory(req.body.category, req.body.productType, majorCategory)
     }
 
-    const product = await Product.create(req.body)
+    // Use service to create product (which auto-assigns shops)
+    const product = await createProductService(req.body)
+    
     res.status(201).json({
       success: true,
       data: product
@@ -279,29 +281,34 @@ exports.createBulkProducts = async (req, res) => {
     }
 
     // Ensure isActive is set for all products and auto-create categories
-    const productsToInsert = []
-    for (const product of req.body) {
-      if (product.isActive === undefined) {
-        product.isActive = true
-      }
+    const createdProducts = []
+    
+    for (const productData of req.body) {
+      try {
+        if (productData.isActive === undefined) {
+          productData.isActive = true
+        }
 
-      // Auto-create category if it doesn't exist
-      if (product.category) {
-        const majorCategory = product.price <= 1000 ? "AFFORDABLE" : "LUXURY"
-        await ensureCategory(product.category, product.productType, majorCategory)
-      }
+        // Auto-create category if it doesn't exist
+        if (productData.category) {
+          const majorCategory = productData.price <= 1000 ? "AFFORDABLE" : "LUXURY"
+          await ensureCategory(productData.category, productData.productType, majorCategory)
+        }
 
-      productsToInsert.push(product)
+        // Use service to create product (which auto-assigns shops)
+        const product = await createProductService(productData)
+        createdProducts.push(product)
+      } catch (err) {
+        console.error(`Error creating product ${productData.name}:`, err.message)
+        // Continue with other products even if one fails
+      }
     }
-
-    const products = await Product.insertMany(productsToInsert, {
-      ordered: false
-    })
 
     res.status(201).json({
       success: true,
-      count: products.length,
-      data: products
+      count: createdProducts.length,
+      data: createdProducts,
+      message: `Created ${createdProducts.length} out of ${req.body.length} products`
     })
   } catch (err) {
     res.status(400).json({

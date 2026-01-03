@@ -17,5 +17,8 @@ router.post("/bulk", controller.createBulkProducts)
 const adminController = require("./product.admin.controller")
 router.post("/admin/delete-all", adminController.deleteAllProducts)
 router.post("/admin/delete-by-criteria", adminController.deleteProductsByCriteria)
+router.post("/admin/reassign-and-sync", adminController.reassignAndSyncProducts)
+router.post("/admin/create-categories-from-products", adminController.createCategoriesFromProducts)
+router.post("/admin/seed-shops", adminController.seedShopsEndpoint)
 
 module.exports = router

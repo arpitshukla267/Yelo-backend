@@ -52,20 +52,38 @@ async function updateCategoryCounts() {
   const categories = await Category.find({ isActive: true })
   
   for (const category of categories) {
-    // Count products in this category
+    // Count products in this category - match by slug or name
     const productCount = await Product.countDocuments({
-      category: category.slug,
+      $or: [
+        { category: category.slug },
+        { category: category.name },
+        { category: { $regex: new RegExp(`^${category.slug}$`, 'i') } }
+      ],
       isActive: true
     })
     
     category.productCount = productCount
 
-    // Update subcategory counts
+    // Update subcategory counts - match productType with subcategory name or slug
     for (const subcategory of category.subcategories) {
       const subcategoryCount = await Product.countDocuments({
-        category: category.slug,
-        productType: subcategory.slug,
-        isActive: true
+        $and: [
+          {
+            $or: [
+              { category: category.slug },
+              { category: category.name },
+              { category: { $regex: new RegExp(`^${category.slug}$`, 'i') } }
+            ]
+          },
+          {
+            $or: [
+              { productType: subcategory.name },
+              { productType: subcategory.slug },
+              { productType: { $regex: new RegExp(`^${subcategory.slug}$`, 'i') } }
+            ]
+          },
+          { isActive: true }
+        ]
       })
       subcategory.productCount = subcategoryCount
     }

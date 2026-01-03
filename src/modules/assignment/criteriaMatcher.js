@@ -1,26 +1,26 @@
 function matchesShopCriteria(product, criteria) {
-    if (!criteria) return false
+    // If no criteria defined, accept all products (fallback to accept all)
+    if (!criteria || Object.keys(criteria).length === 0) return true
   
-    // Price
-    if (criteria.priceMin != null && product.price < criteria.priceMin)
+    // Price - product must fall within price range if specified
+    if (criteria.priceMin != null && (product.price || 0) < criteria.priceMin)
       return false
   
-    if (criteria.priceMax != null && product.price > criteria.priceMax)
+    if (criteria.priceMax != null && (product.price || 0) > criteria.priceMax)
       return false
   
-    // Rating (skip if product has no reviews yet)
-    if (
-      criteria.minRating != null &&
-      product.reviews > 0 &&
-      product.rating < criteria.minRating
-    )
-      return false
+    // Rating (skip if product has no reviews yet, but still check if minReviews is required)
+    if (criteria.minRating != null) {
+      // Only check rating if product has reviews, otherwise allow it
+      if (product.reviews > 0 && (product.rating || 0) < criteria.minRating) {
+        return false
+      }
+      // If minRating is required but product has no reviews, don't exclude it (allow new products)
+    }
   
-    if (
-      criteria.minReviews != null &&
-      product.reviews < criteria.minReviews
-    )
+    if (criteria.minReviews != null && (product.reviews || 0) < criteria.minReviews) {
       return false
+    }
   
     // Discount
     if (criteria.hasDiscount) {

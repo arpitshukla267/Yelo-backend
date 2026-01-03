@@ -80,6 +80,50 @@ const shops = [
     hasBottomBar: false
   },
   {
+    slug: "super-savers",
+    name: "Super Savers",
+    route: "/super-savers",
+    majorCategory: "AFFORDABLE",
+    shopType: "PRICE_BASED",
+    criteria: { priceMax: 1299 },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot",
+    name: "Price Spot",
+    route: "/price-spot",
+    majorCategory: "AFFORDABLE",
+    shopType: "PRICE_BASED",
+    criteria: { priceMax: 1999 },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "todays-deal",
+    name: "Today's Deal",
+    route: "/todays-deal",
+    majorCategory: "AFFORDABLE",
+    shopType: "DISCOUNT_BASED",
+    criteria: { priceMax: 1000, hasDiscount: true, daysSinceAdded: 7 },
+    defaultSort: "discount-high",
+    hasSidebar: false,
+    hasBottomBar: false
+  },
+  {
+    slug: "fresh-arrival",
+    name: "Fresh Arrival",
+    route: "/fresh-arrival",
+    majorCategory: "AFFORDABLE",
+    shopType: "TIME_BASED",
+    criteria: { priceMax: 1000, daysSinceAdded: 7 },
+    defaultSort: "newest",
+    hasSidebar: false,
+    hasBottomBar: false
+  },
+  {
     slug: "luxury-shop",
     name: "Luxury Collection",
     route: "/luxury/shop",
