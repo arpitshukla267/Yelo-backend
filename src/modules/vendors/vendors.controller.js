@@ -38,22 +38,78 @@ exports.deleteVendor = async (req, res) => {
 }
 
 exports.getVendorProducts = async (req, res) => {
-    try {
-      const products = await Product.find({
-        vendorSlug: req.params.slug,
-        isActive: true
-      })
-  
-      res.json({
-        success: true,
-        count: products.length,
-        data: products
-      })
-    } catch (err) {
-      res.status(500).json({
+  try {
+    const { slug } = req.params
+    const {
+      page = 1,
+      limit = 50,
+      sort = "popular"
+    } = req.query
+
+    const query = {
+      vendorSlug: slug,
+      isActive: true
+    }
+
+    const sortOptions = {
+      popular: { reviews: -1, rating: -1 },
+      "price-low": { price: 1 },
+      "price-high": { price: -1 },
+      newest: { dateAdded: -1 }
+    }
+
+    const sortQuery = sortOptions[sort] || sortOptions.popular
+    const skip = (Number(page) - 1) * Number(limit)
+
+    const products = await Product.find(query)
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(Number(limit))
+      .lean()
+
+    const total = await Product.countDocuments(query)
+
+    res.json({
+      success: true,
+      count: products.length,
+      total,
+      data: products,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit))
+      }
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
+exports.getVendorBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params
+    const vendor = await Vendor.findOne({ slug, isActive: true }).lean()
+    
+    if (!vendor) {
+      return res.status(404).json({
         success: false,
-        message: err.message
+        message: "Vendor not found"
       })
     }
+
+    res.json({
+      success: true,
+      data: vendor
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
   }
+}
   

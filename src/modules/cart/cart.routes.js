@@ -2,11 +2,15 @@ const router = require("express").Router()
 const {
   fetchCart,
   addProductToCart,
-  updateCartProduct
+  updateCartProduct,
+  removeCartItem
 } = require("./cart.controller")
+const auth = require("../../middlewares/auth.middleware")
 
-router.get("/", fetchCart)
-router.post("/", addProductToCart)
-router.put("/", updateCartProduct)
+// All cart routes require authentication
+router.get("/", auth, fetchCart)
+router.post("/", auth, addProductToCart)
+router.put("/", auth, updateCartProduct)
+router.delete("/:itemId", auth, removeCartItem)
 
 module.exports = router

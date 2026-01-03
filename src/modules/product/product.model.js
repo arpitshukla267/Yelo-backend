@@ -157,15 +157,26 @@ const productSchema = new mongoose.Schema(
 
 /**
  * Auto-generate:
- * 1. final slug = baseSlug + vendorSlug
+ * 1. final slug = baseSlug + vendorSlug (for backward compatibility)
+ *    But also support vendor-slug/product-slug format in URLs for SEO
  * 2. majorCategory
  */
 productSchema.pre("validate", function () {
+  // Generate slug as baseSlug-vendorSlug for database uniqueness
+  // Frontend will construct vendor-slug/product-slug URLs for SEO
   if (this.baseSlug && this.vendorSlug) {
     this.slug = `${this.baseSlug}-${this.vendorSlug}`
   }
 
   this.majorCategory = this.price <= 1000 ? "AFFORDABLE" : "LUXURY"
+})
+
+// Virtual for SEO-friendly URL format
+productSchema.virtual('seoUrl').get(function() {
+  if (this.vendorSlug && this.baseSlug) {
+    return `${this.vendorSlug}/${this.baseSlug}`
+  }
+  return this.slug
 })
 
 module.exports = mongoose.model("Product", productSchema)

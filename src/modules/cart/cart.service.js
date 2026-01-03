@@ -16,7 +16,7 @@ async function getCart(userId) {
 /**
  * ADD TO CART
  */
-async function addToCart(userId, productId, quantity = 1) {
+async function addToCart(userId, productId, quantity = 1, size = null, color = null) {
   const product = await Product.findById(productId)
 
   if (!product) {
@@ -55,15 +55,20 @@ async function addToCart(userId, productId, quantity = 1) {
           productId,
           vendorId,
           quantity,
-          priceAtAdd: product.price
+          priceAtAdd: product.price,
+          size,
+          color
         }
       ]
     })
   }
 
-  // 🟢 Check if product already exists
+  // 🟢 Check if product already exists with same size and color
   const existingItem = cart.items.find(
-    item => item.productId.toString() === productId
+    item => 
+      item.productId.toString() === productId &&
+      item.size === size &&
+      item.color === color
   )
 
   if (existingItem) {
@@ -73,7 +78,9 @@ async function addToCart(userId, productId, quantity = 1) {
       productId,
       vendorId,
       quantity,
-      priceAtAdd: product.price
+      priceAtAdd: product.price,
+      size,
+      color
     })
   }
 
@@ -84,13 +91,16 @@ async function addToCart(userId, productId, quantity = 1) {
 /**
  * UPDATE CART ITEM (increase / decrease / remove)
  */
-async function updateCartItem(userId, productId, quantity) {
+async function updateCartItem(userId, productId, quantity, size = null, color = null) {
   const cart = await Cart.findOne({ userId })
 
   if (!cart) return null
 
   const itemIndex = cart.items.findIndex(
-    item => item.productId.toString() === productId
+    item => 
+      item.productId.toString() === productId &&
+      (!size || item.size === size) &&
+      (!color || item.color === color)
   )
 
   if (itemIndex === -1) return cart
@@ -102,7 +112,25 @@ async function updateCartItem(userId, productId, quantity) {
   // ✅ Update quantity
   else {
     cart.items[itemIndex].quantity = quantity
+    if (size) cart.items[itemIndex].size = size
+    if (color) cart.items[itemIndex].color = color
   }
+
+  await cart.save()
+  return cart
+}
+
+/**
+ * REMOVE FROM CART
+ */
+async function removeFromCart(userId, itemId) {
+  const cart = await Cart.findOne({ userId })
+
+  if (!cart) return null
+
+  cart.items = cart.items.filter(
+    item => item._id.toString() !== itemId
+  )
 
   await cart.save()
   return cart
@@ -111,5 +139,6 @@ async function updateCartItem(userId, productId, quantity) {
 module.exports = {
   getCart,
   addToCart,
-  updateCartItem
+  updateCartItem,
+  removeFromCart
 }

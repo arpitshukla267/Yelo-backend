@@ -54,10 +54,18 @@ async function getProductsByShop({
     query["colors.name"] = { $in: filters.color.split(",") }
   }
 
-  const products = await Product.find(query).sort(sortQuery)
+  const products = await Product.find(query).sort(sortQuery).lean()
+
+  // Add SEO-friendly URLs to products
+  const productsWithSeoUrl = products.map(product => ({
+    ...product,
+    seoUrl: product.vendorSlug && product.baseSlug 
+      ? `${product.vendorSlug}/${product.baseSlug}` 
+      : product.slug
+  }))
 
   return {
-    products
+    products: productsWithSeoUrl
   }
 }
 

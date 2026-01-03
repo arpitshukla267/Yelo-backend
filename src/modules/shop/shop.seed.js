@@ -30,7 +30,7 @@ const shops = [
     route: "/best-sellers",
     majorCategory: "AFFORDABLE",
     shopType: "PERFORMANCE_BASED",
-    criteria: { priceMax: 1000, minRating: 4.5, minReviews: 500 },
+    criteria: { priceMax: 5000, minRating: 4, minReviews: 5 },
     defaultSort: "popular",
     hasSidebar: false,
     hasBottomBar: false

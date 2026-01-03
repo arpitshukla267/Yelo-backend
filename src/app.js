@@ -6,11 +6,21 @@ const app = express()
 
 // CORS configuration
 const allowedOrigins = [
+  // Localhost variations for development
   "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "http://[::1]:3000",
+  "http://[::1]:3001",
+  // Production domains
   "https://www.yeloindia.com",
   "https://yeloindia.com",
   "http://yeloindia.com",
-  "https://yelo-wheat.vercel.app"
+  // Vercel deployments
+  "https://yelo-wheat.vercel.app",
+  // Add any other Vercel preview URLs if needed
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
 ]
 
 app.use(
@@ -19,11 +29,21 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true)
       
+      // Check if origin is in allowed list
       if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true)
-      } else {
-        callback(new Error("Not allowed by CORS"))
+        return callback(null, true)
       }
+      
+      // For development: allow any localhost origin (flexible for different ports)
+      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)
+        if (isLocalhost) {
+          return callback(null, true)
+        }
+      }
+      
+      // Reject if not allowed
+      callback(new Error(`Not allowed by CORS: ${origin}`))
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -33,5 +53,9 @@ app.use(
 
 app.use(express.json())
 app.use("/api", routes)
+
+// Error handling middleware (must be last)
+const errorHandler = require("./middlewares/error.middleware")
+app.use(errorHandler)
 
 module.exports = app

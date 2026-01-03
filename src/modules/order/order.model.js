@@ -41,6 +41,20 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["PLACED", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"],
       default: "PLACED"
+    },
+
+    // Delivery address
+    deliveryAddress: {
+      address: String,
+      city: String,
+      state: String,
+      pincode: String,
+      latitude: Number,
+      longitude: Number
+    },
+
+    paymentMethod: {
+      type: String
     }
   },
   { timestamps: true }

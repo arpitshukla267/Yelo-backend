@@ -5,47 +5,82 @@ const {
   updateCartItem
 } = require("./cart.service")
 
-const TEMP_USER_ID = "000000000000000000000001"
-
 async function fetchCart(req, res) {
-  const cart = await getCart(TEMP_USER_ID)
-  res.json(cart || { items: [] })
+  try {
+    const userId = req.user.userId
+    const cart = await getCart(userId)
+    res.json({ success: true, data: cart || { items: [] } })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
 }
 
 async function addProductToCart(req, res) {
-  const { productId, quantity } = req.body
+  try {
+    const userId = req.user.userId
+    const { productId, quantity, size, color } = req.body
 
-  if (!mongoose.Types.ObjectId.isValid(productId)) {
-    return res.status(400).json({ message: "Invalid productId" })
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ success: false, message: "Invalid productId" })
+    }
+
+    const cart = await addToCart(
+      userId,
+      productId,
+      quantity || 1,
+      size,
+      color
+    )
+
+    res.json({ success: true, data: cart })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
   }
-
-  const cart = await addToCart(
-    TEMP_USER_ID,
-    productId,
-    quantity || 1
-  )
-
-  res.json(cart)
 }
 
 async function updateCartProduct(req, res) {
-  const { productId, quantity } = req.body
+  try {
+    const userId = req.user.userId
+    const { productId, quantity, size, color } = req.body
 
-  if (!mongoose.Types.ObjectId.isValid(productId)) {
-    return res.status(400).json({ message: "Invalid productId" })
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ success: false, message: "Invalid productId" })
+    }
+
+    const cart = await updateCartItem(
+      userId,
+      productId,
+      quantity,
+      size,
+      color
+    )
+
+    res.json({ success: true, data: cart })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
   }
+}
 
-  const cart = await updateCartItem(
-    TEMP_USER_ID,
-    productId,
-    quantity
-  )
+async function removeCartItem(req, res) {
+  try {
+    const userId = req.user.userId
+    const { itemId } = req.params
 
-  res.json(cart)
+    if (!mongoose.Types.ObjectId.isValid(itemId)) {
+      return res.status(400).json({ success: false, message: "Invalid itemId" })
+    }
+
+    const cart = await removeFromCart(userId, itemId)
+
+    res.json({ success: true, data: cart })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
 }
 
 module.exports = {
   fetchCart,
   addProductToCart,
-  updateCartProduct
+  updateCartProduct,
+  removeCartItem
 }

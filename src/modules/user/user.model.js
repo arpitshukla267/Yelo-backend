@@ -29,6 +29,26 @@ const userSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true
+    },
+
+    // Address fields
+    address: {
+      type: String
+    },
+    city: {
+      type: String
+    },
+    state: {
+      type: String
+    },
+    pincode: {
+      type: String
+    },
+    latitude: {
+      type: Number
+    },
+    longitude: {
+      type: Number
     }
   },
   { timestamps: true }

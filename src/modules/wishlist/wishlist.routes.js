@@ -4,9 +4,11 @@ const {
   addProductToWishlist,
   removeProductFromWishlist
 } = require("./wishlist.controller")
+const auth = require("../../middlewares/auth.middleware")
 
-router.get("/", fetchWishlist)
-router.post("/", addProductToWishlist)
-router.delete("/:productId", removeProductFromWishlist)
+// All wishlist routes require authentication
+router.get("/", auth, fetchWishlist)
+router.post("/", auth, addProductToWishlist)
+router.delete("/:productId", auth, removeProductFromWishlist)
 
 module.exports = router

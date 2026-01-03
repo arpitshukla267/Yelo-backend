@@ -60,7 +60,7 @@ async function updateProfile(req, res) {
 async function getMe(req, res) {
   try {
     const user = await User.findById(req.user.userId).select(
-      "name email phone avatar"
+      "name email phone avatar address city state pincode latitude longitude"
     )
 
     if (!user) {
@@ -82,8 +82,48 @@ async function getMe(req, res) {
   }
 }
 
+async function updateAddress(req, res) {
+  try {
+    const userId = req.user.userId;
+    const { address, city, state, pincode, latitude, longitude } = req.body;
+
+    // Validate required fields
+    if (!address || !city || !state || !pincode) {
+      return res.status(400).json({
+        success: false,
+        message: "Address, city, state, and pincode are required"
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        address,
+        city,
+        state,
+        pincode,
+        latitude,
+        longitude
+      },
+      { new: true }
+    ).select("name email phone avatar isProfileComplete address city state pincode latitude longitude");
+
+    res.json({ 
+      success: true, 
+      user,
+      message: "Address updated successfully"
+    });
+  } catch (err) {
+    res.status(400).json({ 
+      success: false, 
+      message: err.message 
+    });
+  }
+}
+
 
 module.exports = {
   updateProfile,
-  getMe
+  getMe,
+  updateAddress
 };
