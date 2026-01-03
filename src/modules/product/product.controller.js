@@ -1,5 +1,6 @@
 const Product = require("./product.model")
 const { getProductsByShop } = require("./product.service")
+const { ensureCategory } = require("../category/category.service")
 
 // GET all products (with filters and pagination)
 exports.getAllProducts = async (req, res) => {
@@ -244,6 +245,17 @@ exports.getTrendingProducts = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
+    // Ensure isActive is set
+    if (req.body.isActive === undefined) {
+      req.body.isActive = true
+    }
+
+    // Auto-create category if it doesn't exist
+    if (req.body.category) {
+      const majorCategory = req.body.price <= 1000 ? "AFFORDABLE" : "LUXURY"
+      await ensureCategory(req.body.category, req.body.productType, majorCategory)
+    }
+
     const product = await Product.create(req.body)
     res.status(201).json({
       success: true,
@@ -266,7 +278,23 @@ exports.createBulkProducts = async (req, res) => {
       })
     }
 
-    const products = await Product.insertMany(req.body, {
+    // Ensure isActive is set for all products and auto-create categories
+    const productsToInsert = []
+    for (const product of req.body) {
+      if (product.isActive === undefined) {
+        product.isActive = true
+      }
+
+      // Auto-create category if it doesn't exist
+      if (product.category) {
+        const majorCategory = product.price <= 1000 ? "AFFORDABLE" : "LUXURY"
+        await ensureCategory(product.category, product.productType, majorCategory)
+      }
+
+      productsToInsert.push(product)
+    }
+
+    const products = await Product.insertMany(productsToInsert, {
       ordered: false
     })
 
