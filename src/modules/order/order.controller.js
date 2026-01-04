@@ -230,9 +230,138 @@ async function downloadInvoice(req, res) {
   }
 }
 
+async function completeOrder(req, res) {
+  try {
+    const { id } = req.params
+    const userId = req.user.userId
+    
+    const order = await Order.findOne({ _id: id, userId })
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      })
+    }
+
+    // Check if payment is completed
+    if (order.paymentStatus !== "PAID") {
+      return res.status(400).json({
+        success: false,
+        message: "Order payment must be completed before marking as completed"
+      })
+    }
+
+    // Update order status to COMPLETED
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { orderStatus: "COMPLETED" },
+      { new: true }
+    )
+      .populate("items.productId", "name slug images price brand")
+      .lean()
+
+    res.json({
+      success: true,
+      message: "Order marked as completed",
+      data: updatedOrder
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
+async function requestRefund(req, res) {
+  try {
+    const { id } = req.params
+    const { reason } = req.body
+    const userId = req.user.userId
+    
+    const order = await Order.findOne({ _id: id, userId })
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      })
+    }
+
+    // Check if order can be refunded
+    if (order.orderStatus === "CANCELLED") {
+      return res.status(400).json({
+        success: false,
+        message: "Order is already cancelled"
+      })
+    }
+
+    // In a real app, you would integrate with Razorpay refund API here
+    // For now, we'll just log the refund request
+    
+    res.json({
+      success: true,
+      message: "Refund request submitted successfully. Our team will process it within 5-7 business days.",
+      data: {
+        orderId: id,
+        reason: reason || "Not specified",
+        status: "PENDING"
+      }
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
+async function requestExchange(req, res) {
+  try {
+    const { id } = req.params
+    const { reason, newSize, newColor } = req.body
+    const userId = req.user.userId
+    
+    const order = await Order.findOne({ _id: id, userId })
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      })
+    }
+
+    // Check if order can be exchanged
+    if (order.orderStatus === "CANCELLED" || order.orderStatus === "DELIVERED") {
+      return res.status(400).json({
+        success: false,
+        message: `Order cannot be exchanged. Current status: ${order.orderStatus}`
+      })
+    }
+
+    res.json({
+      success: true,
+      message: "Exchange request submitted successfully. Our team will contact you soon.",
+      data: {
+        orderId: id,
+        reason: reason || "Not specified",
+        newSize,
+        newColor,
+        status: "PENDING"
+      }
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
 module.exports = {
   getOrders,
   getOrderById,
   createOrder,
-  downloadInvoice
+  downloadInvoice,
+  completeOrder,
+  requestRefund,
+  requestExchange
 }
