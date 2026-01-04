@@ -106,13 +106,11 @@ async function placeOrder(userId, orderData = {}) {
     })
   }
 
-  // 5) Clear cart only if we used cart
-  if (!orderData.items || orderData.items.length === 0) {
-    const cart = await Cart.findOne({ userId })
-    if (cart) {
-      cart.items = []
-      await cart.save()
-    }
+  // 5) Clear cart after order is placed (always clear, regardless of source)
+  const cart = await Cart.findOne({ userId })
+  if (cart) {
+    cart.items = []
+    await cart.save()
   }
 
   return order

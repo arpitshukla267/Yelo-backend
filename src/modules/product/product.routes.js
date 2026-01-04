@@ -7,7 +7,9 @@ router.get("/", controller.getAllProducts)
 router.get("/trending", controller.getTrendingProducts)
 router.get("/shop/:shopSlug", controller.getProductsByShop)
 router.get("/vendor/:vendorSlug", controller.getProductsByVendor)
-router.get("/:slug", controller.getProductBySlug) // Must be last to avoid conflicts
+// Use regex to capture slugs with slashes (e.g., vendor-slug/product-slug)
+// This matches any path that doesn't start with the above routes
+router.get(/^\/(.+)$/, controller.getProductBySlug) // Must be last to avoid conflicts
 
 // POST routes (admin)
 router.post("/", controller.createProduct)

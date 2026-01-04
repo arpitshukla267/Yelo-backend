@@ -75,7 +75,15 @@ exports.getAllProducts = async (req, res) => {
 // GET product by slug (supports vendor-slug/product-slug format)
 exports.getProductBySlug = async (req, res) => {
   try {
-    const { slug } = req.params
+    // Handle both regex route (req.params[0]) and named parameter route (req.params.slug)
+    const slug = req.params[0] || req.params.slug
+
+    if (!slug) {
+      return res.status(400).json({
+        success: false,
+        message: "Product slug is required"
+      })
+    }
 
     let product = null
 
