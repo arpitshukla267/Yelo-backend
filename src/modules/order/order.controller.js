@@ -24,6 +24,32 @@ async function getOrders(req, res) {
   }
 }
 
+async function getRemainingOrders(req, res) {
+  try {
+    const userId = req.user.userId
+    
+    // Get all orders that are not completed or cancelled
+    const orders = await Order.find({ 
+      userId,
+      orderStatus: { $nin: ["COMPLETED", "CANCELLED"] }
+    })
+      .populate("items.productId", "name slug images price")
+      .sort({ createdAt: -1 })
+      .lean()
+
+    res.json({
+      success: true,
+      data: orders,
+      count: orders.length
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
 async function getOrderById(req, res) {
   try {
     const { id } = req.params
@@ -243,6 +269,31 @@ async function completeOrder(req, res) {
       })
     }
 
+    // Check if order is already completed
+    if (order.orderStatus === "COMPLETED") {
+      return res.status(400).json({
+        success: false,
+        message: "Order is already completed"
+      })
+    }
+
+    // Check if order is cancelled
+    if (order.orderStatus === "CANCELLED") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot complete a cancelled order"
+      })
+    }
+
+    // Check if order is delivered (should be delivered before marking as completed)
+    if (order.orderStatus !== "DELIVERED") {
+      return res.status(400).json({
+        success: false,
+        message: `Order must be delivered before marking as completed. Current status: ${order.orderStatus}`,
+        currentStatus: order.orderStatus
+      })
+    }
+
     // Check if payment is completed
     if (order.paymentStatus !== "PAID") {
       return res.status(400).json({
@@ -262,7 +313,7 @@ async function completeOrder(req, res) {
 
     res.json({
       success: true,
-      message: "Order marked as completed",
+      message: "Order marked as completed successfully",
       data: updatedOrder
     })
   } catch (err) {
@@ -358,6 +409,7 @@ async function requestExchange(req, res) {
 
 module.exports = {
   getOrders,
+  getRemainingOrders,
   getOrderById,
   createOrder,
   downloadInvoice,
