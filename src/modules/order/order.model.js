@@ -53,7 +53,7 @@ const orderSchema = new mongoose.Schema(
     
     razorpaySignature: {
       type: String
-    }
+    },
 
     // Delivery address
     deliveryAddress: {
