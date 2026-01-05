@@ -77,6 +77,11 @@ const shopSchema = new mongoose.Schema(
     uiTheme: {
       type: String,
       default: "default"
+    },
+
+    banner: {
+      type: String, // URL to banner image
+      default: null
     }
   },
   { timestamps: true }

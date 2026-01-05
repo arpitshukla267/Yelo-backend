@@ -58,6 +58,11 @@ const productSchema = new mongoose.Schema(
       index: true
     },
     
+    subcategory: {
+      type: String, // tshirts, jackets, sneakers (for category pages)
+      index: true
+    },
+    
     occasion: {
       type: [String], // party, office, casual
       index: true
@@ -169,6 +174,12 @@ productSchema.pre("validate", function () {
   }
 
   this.majorCategory = this.price <= 1000 ? "AFFORDABLE" : "LUXURY"
+  
+  // Auto-populate subcategory from productType if not set
+  if (this.productType && !this.subcategory) {
+    // Normalize productType to subcategory format
+    this.subcategory = this.productType.toLowerCase().replace(/\s+/g, '-')
+  }
 })
 
 // Virtual for SEO-friendly URL format
@@ -177,6 +188,29 @@ productSchema.virtual('seoUrl').get(function() {
     return `${this.vendorSlug}/${this.baseSlug}`
   }
   return this.slug
+})
+
+// Auto-assign products to shops after save (create or update)
+productSchema.post('save', async function() {
+  try {
+    const { assignProductToShops } = require("../assignment/assignment.service")
+    await assignProductToShops(this)
+  } catch (error) {
+    console.error(`Error auto-assigning product ${this._id} to shops:`, error.message)
+    // Don't throw - assignment failure shouldn't prevent product save
+  }
+})
+
+// Auto-assign products to shops after update
+productSchema.post('findOneAndUpdate', async function(doc) {
+  if (doc) {
+    try {
+      const { assignProductToShops } = require("../assignment/assignment.service")
+      await assignProductToShops(doc)
+    } catch (error) {
+      console.error(`Error auto-assigning product ${doc._id} to shops:`, error.message)
+    }
+  }
 })
 
 module.exports = mongoose.model("Product", productSchema)

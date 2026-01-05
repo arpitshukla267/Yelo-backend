@@ -102,6 +102,84 @@ async function reassignAndSyncProducts(req, res) {
   }
 }
 
+// Migrate product categories: Fix category/subcategory structure
+async function migrateCategories(req, res) {
+  try {
+    const { migrateProductCategories } = require("./product.migration")
+    const result = await migrateProductCategories()
+    
+    // Reassign products to shops after migration
+    const { reassignAllProducts } = require("../assignment/assignment.service")
+    await reassignAllProducts()
+    
+    // Sync categories
+    const { ensureCategory, updateCategoryCounts } = require("../category/category.service")
+    const products = await Product.find({ isActive: true })
+    for (const product of products) {
+      if (product.category) {
+        const majorCategory = product.majorCategory || (product.price <= 1000 ? "AFFORDABLE" : "LUXURY")
+        await ensureCategory(product.category, product.productType, majorCategory)
+      }
+    }
+    await updateCategoryCounts()
+    
+    res.json({
+      success: true,
+      message: `Migrated ${result.updatedCount} products. Categories and subcategories fixed.`,
+      ...result
+    })
+  } catch (error) {
+    console.error("Error migrating categories:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to migrate categories.",
+      error: error.message
+    })
+  }
+}
+
+// Populate subcategory field from productType for all products
+async function populateSubcategories(req, res) {
+  try {
+    const products = await Product.find({ 
+      isActive: true,
+      productType: { $exists: true, $ne: null },
+      $or: [
+        { subcategory: { $exists: false } },
+        { subcategory: null },
+        { subcategory: "" }
+      ]
+    })
+    
+    let updatedCount = 0
+    
+    for (const product of products) {
+      if (product.productType) {
+        const subcategory = product.productType.toLowerCase().replace(/\s+/g, '-')
+        await Product.updateOne(
+          { _id: product._id },
+          { subcategory: subcategory }
+        )
+        updatedCount++
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Populated subcategory for ${updatedCount} products.`,
+      updatedCount,
+      totalProducts: products.length
+    })
+  } catch (error) {
+    console.error("Error populating subcategories:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to populate subcategories.",
+      error: error.message
+    })
+  }
+}
+
 // Create categories from all existing products
 async function createCategoriesFromProducts(req, res) {
   try {
@@ -144,10 +222,87 @@ async function createCategoriesFromProducts(req, res) {
   }
 }
 
+// Debug endpoint: Get product data with shop assignments
+async function getProductDebugData(req, res) {
+  try {
+    const { limit = 20, productId, category, productType } = req.query
+    
+    const query = { isActive: true }
+    if (productId) query._id = productId
+    if (category) query.category = category
+    if (productType) query.productType = productType
+    
+    const products = await Product.find(query)
+      .limit(Number(limit))
+      .lean()
+    
+    const Shop = require("../shop/shop.model")
+    const allShops = await Shop.find({}).lean()
+    
+    const debugData = products.map(product => {
+      // Find which shops this product should be assigned to
+      const matchingShops = allShops
+        .filter(shop => {
+          // Check majorCategory match
+          if (shop.majorCategory !== product.majorCategory) return false
+          
+          // Check criteria match
+          const matchesShopCriteria = require("../assignment/criteriaMatcher")
+          return matchesShopCriteria(product, shop.criteria)
+        })
+        .map(shop => ({
+          slug: shop.slug,
+          name: shop.name,
+          route: shop.route,
+          criteria: shop.criteria
+        }))
+      
+      return {
+        _id: product._id,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        category: product.category,
+        productType: product.productType,
+        subcategory: product.subcategory,
+        brand: product.brand,
+        majorCategory: product.majorCategory,
+        assignedShops: product.assignedShops || [],
+        shouldBeAssignedTo: matchingShops.map(s => s.slug),
+        matchingShops: matchingShops,
+        isCorrectlyAssigned: JSON.stringify((product.assignedShops || []).sort()) === 
+                            JSON.stringify(matchingShops.map(s => s.slug).sort())
+      }
+    })
+    
+    res.json({
+      success: true,
+      totalProducts: products.length,
+      products: debugData,
+      summary: {
+        totalChecked: debugData.length,
+        correctlyAssigned: debugData.filter(p => p.isCorrectlyAssigned).length,
+        incorrectlyAssigned: debugData.filter(p => !p.isCorrectlyAssigned).length,
+        notAssigned: debugData.filter(p => p.assignedShops.length === 0).length
+      }
+    })
+  } catch (error) {
+    console.error("Error getting product debug data:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to get product debug data.",
+      error: error.message
+    })
+  }
+}
+
 module.exports = {
   deleteAllProducts,
   deleteProductsByCriteria,
   reassignAndSyncProducts,
   createCategoriesFromProducts,
-  seedShopsEndpoint
+  seedShopsEndpoint,
+  getProductDebugData,
+  populateSubcategories,
+  migrateCategories
 }

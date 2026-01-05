@@ -37,10 +37,33 @@ function matchesShopCriteria(product, criteria) {
       if (days > criteria.daysSinceAdded) return false
     }
   
-    // Category match
+    // Category match - improved to handle variations
     if (criteria.categoryMatch) {
-      const text = `${product.category || ""} ${product.name || ""}`.toLowerCase()
-      if (!text.includes(criteria.categoryMatch.toLowerCase())) return false
+      const categoryMatchLower = criteria.categoryMatch.toLowerCase()
+      const categoryMatchWords = categoryMatchLower.split(/[\s-]+/).filter(w => w.length > 0)
+      
+      // Check product category
+      const productCategory = (product.category || "").toLowerCase()
+      const productType = (product.productType || "").toLowerCase()
+      const productName = (product.name || "").toLowerCase()
+      
+      // Combine all text for matching
+      const combinedText = `${productCategory} ${productType} ${productName}`
+      
+      // Check if categoryMatch is included in any of the fields
+      if (combinedText.includes(categoryMatchLower)) {
+        // Direct match found
+      } else if (categoryMatchWords.length > 0) {
+        // Check if all words from categoryMatch are present
+        const allWordsMatch = categoryMatchWords.every(word => 
+          productCategory.includes(word) || 
+          productType.includes(word) || 
+          productName.includes(word)
+        )
+        if (!allWordsMatch) return false
+      } else {
+        return false
+      }
     }
 
     // Brand match - check if product brand matches any in the array

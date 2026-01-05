@@ -1,9 +1,22 @@
 const router = require("express").Router()
 const controller = require("./category.controller")
 
+// Public routes
 router.get("/", controller.getAllCategories)
 router.get("/:slug", controller.getCategoryBySlug)
-router.post("/update-counts", controller.updateCounts)
+
+// Admin routes - Category CRUD
+router.post("/admin/create", controller.createCategory)
+router.put("/admin/:slug", controller.updateCategory)
+router.delete("/admin/:slug", controller.deleteCategory)
+
+// Admin routes - Subcategory CRUD
+router.post("/admin/:slug/subcategories", controller.addSubcategory)
+router.put("/admin/:slug/subcategories/:subcategorySlug", controller.updateSubcategory)
+router.delete("/admin/:slug/subcategories/:subcategorySlug", controller.deleteSubcategory)
+
+// Admin utility routes
+router.post("/admin/update-counts", controller.updateCounts)
 router.post("/admin/seed-hardcoded", controller.seedHardcodedCategories)
 
 module.exports = router
