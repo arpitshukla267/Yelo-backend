@@ -79,27 +79,153 @@ const shops = [
     hasSidebar: true,
     hasBottomBar: false
   },
+  // Price Spot Section - Individual shops for each category
   {
-    slug: "super-savers",
-    name: "Super Savers",
-    route: "/super-savers",
+    slug: "price-spot-sweatshirts",
+    name: "Sweatshirts",
+    route: "/price-spot",
     majorCategory: "AFFORDABLE",
-    shopType: "PRICE_BASED",
-    criteria: { priceMax: 1299 },
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 499, categoryMatch: "sweatshirts" },
     defaultSort: "price-low",
     hasSidebar: false,
     hasBottomBar: true
   },
   {
-    slug: "price-spot",
-    name: "Price Spot",
+    slug: "price-spot-tshirts",
+    name: "Tshirts",
     route: "/price-spot",
     majorCategory: "AFFORDABLE",
-    shopType: "PRICE_BASED",
-    criteria: { priceMax: 1999 },
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 299, categoryMatch: "tshirts" },
     defaultSort: "price-low",
     hasSidebar: false,
     hasBottomBar: true
+  },
+  {
+    slug: "price-spot-tracksuits",
+    name: "Tracksuits",
+    route: "/price-spot",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 899, categoryMatch: "tracksuits" },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot-sweaters",
+    name: "Sweaters",
+    route: "/price-spot",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 599, categoryMatch: "sweaters" },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot-kurta-sets",
+    name: "Kurta Sets",
+    route: "/price-spot",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 599, categoryMatch: "kurta-sets" },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot-face-wash",
+    name: "Face Wash and Cleanser",
+    route: "/price-spot",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 199, categoryMatch: "face-wash" },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  // Super Savers Section - Individual shops for each category
+  {
+    slug: "super-savers-jackets",
+    name: "Jackets",
+    route: "/super-savers",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 949, categoryMatch: "jackets", brandMatch: ["HRX", "Adidas"] },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-kurta-sets",
+    name: "Kurta Sets",
+    route: "/super-savers",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 1099, categoryMatch: "kurta-sets", brandMatch: ["Anouk", "Jaspere"] },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-sneakers",
+    name: "Sneakers",
+    route: "/super-savers",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 1299, categoryMatch: "sneakers", brandMatch: ["Nike", "Puma"] },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-sweaters",
+    name: "Sweaters",
+    route: "/super-savers",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 549, categoryMatch: "sweaters", brandMatch: ["Roadster", "Dressberry"] },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-kurtas",
+    name: "Kurtas",
+    route: "/super-savers",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 349, categoryMatch: "kurtas", brandMatch: ["Anouk"] },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-home-decor",
+    name: "Home Decor",
+    route: "/super-savers",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: { priceMax: 799, categoryMatch: "home-decor", brandMatch: ["Home Center"] },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "featured-brands",
+    name: "Featured Brands",
+    route: "/featured-brands",
+    majorCategory: "AFFORDABLE",
+    shopType: "BRAND_BASED",
+    criteria: { 
+      brandMatch: ["Fastrack", "Voylla", "Nike", "Adidas", "Zara", "H&M"],
+      priceMax: 5000
+    },
+    defaultSort: "popular",
+    hasSidebar: true,
+    hasBottomBar: false
   },
   {
     slug: "todays-deal",

@@ -42,6 +42,15 @@ function matchesShopCriteria(product, criteria) {
       const text = `${product.category || ""} ${product.name || ""}`.toLowerCase()
       if (!text.includes(criteria.categoryMatch.toLowerCase())) return false
     }
+
+    // Brand match - check if product brand matches any in the array
+    if (criteria.brandMatch && Array.isArray(criteria.brandMatch) && criteria.brandMatch.length > 0) {
+      const productBrand = (product.brand || "").toLowerCase()
+      const matchesBrand = criteria.brandMatch.some(brand => 
+        productBrand.includes(brand.toLowerCase()) || brand.toLowerCase().includes(productBrand)
+      )
+      if (!matchesBrand) return false
+    }
   
     // Trending
     if (

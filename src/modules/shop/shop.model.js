@@ -35,6 +35,7 @@ const shopSchema = new mongoose.Schema(
         "TIME_BASED",
         "TRENDING_BASED",
         "CATEGORY_BASED",
+        "BRAND_BASED",
         "EDITORIAL"
       ],
       required: true
@@ -54,6 +55,7 @@ const shopSchema = new mongoose.Schema(
       daysSinceAdded: Number,
       categoryMatch: String,
       nameMatch: String,
+      brandMatch: [String], // Array of brand names for brand-based shops
       isTrending: Boolean
     },
 

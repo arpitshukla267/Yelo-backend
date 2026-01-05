@@ -41,7 +41,26 @@ async function reassignSingleProduct(productId) {
   await assignProductToShops(product)
 }
 
+// Reassign all products to shops (useful when shop criteria changes)
+async function reassignAllProducts() {
+  const products = await Product.find({ isActive: true })
+  let reassignedCount = 0
+  
+  for (const product of products) {
+    try {
+      await assignProductToShops(product)
+      reassignedCount++
+    } catch (error) {
+      console.error(`Error reassigning product ${product._id}:`, error.message)
+    }
+  }
+  
+  console.log(`✅ Reassigned ${reassignedCount} products to shops`)
+  return reassignedCount
+}
+
 module.exports = {
   assignProductToShops,
-  reassignSingleProduct // ✅ MUST be exported
+  reassignSingleProduct,
+  reassignAllProducts
 }

@@ -15,10 +15,23 @@ exports.getAllProducts = async (req, res) => {
       maxPrice,
       gender,
       isTrending,
-      isActive = true
+      isActive = true,
+      search
     } = req.query
 
     const query = { isActive: isActive !== 'false' }
+
+    // Search filter - search in name, brand, category
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i')
+      query.$or = [
+        { name: searchRegex },
+        { brand: searchRegex },
+        { category: searchRegex },
+        { productType: searchRegex },
+        { description: searchRegex }
+      ]
+    }
 
     // Filters
     if (category) query.category = category
