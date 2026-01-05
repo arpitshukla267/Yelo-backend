@@ -138,11 +138,45 @@ async function updateCategoryCounts() {
   }
 }
 
+// Cache for category counts (expires after 5 minutes)
+let categoryCountsCache = null
+let categoryCountsCacheTime = null
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
 /**
  * Get all categories with active products only
+ * @param {string|null} majorCategory - Filter by major category
+ * @param {boolean} forceUpdateCounts - Force update counts (default: false, uses cache)
  */
-async function getActiveCategories(majorCategory = null) {
-  await updateCategoryCounts()
+async function getActiveCategories(majorCategory = null, forceUpdateCounts = false) {
+  // Only update counts if cache is expired or forced
+  const now = Date.now()
+  const cacheExpired = !categoryCountsCache || !categoryCountsCacheTime || (now - categoryCountsCacheTime > CACHE_DURATION)
+  
+  // If cache is valid and not forcing update, skip count updates (use existing counts)
+  if (!forceUpdateCounts && !cacheExpired && categoryCountsCache) {
+    // Return cached data immediately (fast response)
+    return categoryCountsCache
+  }
+  
+  // Need to update counts - do it in background if cache exists, otherwise wait
+  if (categoryCountsCache && !forceUpdateCounts) {
+    // Update counts in background (don't wait for it to complete)
+    updateCategoryCounts().then(() => {
+      categoryCountsCacheTime = Date.now()
+      // Cache will be updated on next request
+    }).catch(err => {
+      console.error('Error updating category counts:', err)
+    })
+    
+    // Return cached data immediately while update runs in background
+    return categoryCountsCache
+  }
+  
+  // First time or forced update - wait for counts (but optimize by skipping if not needed)
+  if (forceUpdateCounts || !categoryCountsCache) {
+    await updateCategoryCounts()
+  }
   
   // Show categories that have products OR have subcategories (so new categories with subcategories appear)
   // Also show categories that have products matching their subcategories (even if category name doesn't match)
@@ -168,11 +202,12 @@ async function getActiveCategories(majorCategory = null) {
   const categories = await Category.find(baseQuery)
     .sort({ productCount: -1, name: 1 })
     .lean()
+    .select('-__v') // Exclude version field for faster queries
 
   // Filter out categories that have images but no subcategories
   // Also remove "Men's Wear" category if it has an image (keep only the one with icon)
   // Return all active subcategories (even with 0 products) so users can see them
-  return categories
+  const filtered = categories
     .filter(cat => {
       // Remove "Men's Wear" category if it has an image (keep only icon version)
       if (cat.slug === 'mens-wear' && cat.image) {
@@ -189,6 +224,11 @@ async function getActiveCategories(majorCategory = null) {
       ...cat,
       subcategories: cat.subcategories.filter(sub => sub.isActive !== false)
     }))
+  
+  // Update cache
+  categoryCountsCache = filtered
+  categoryCountsCacheTime = Date.now()
+  return filtered
 }
 
 /**

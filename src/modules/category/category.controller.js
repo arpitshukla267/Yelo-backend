@@ -3,8 +3,10 @@ const { getActiveCategories, getCategoryBySlug, updateCategoryCounts, ensureCate
 // GET all categories with products
 exports.getAllCategories = async (req, res) => {
   try {
-    const { majorCategory } = req.query
-    const categories = await getActiveCategories(majorCategory || null)
+    const { majorCategory, forceUpdate } = req.query
+    // Only force update if explicitly requested (for admin use)
+    const forceUpdateCounts = forceUpdate === 'true'
+    const categories = await getActiveCategories(majorCategory || null, forceUpdateCounts)
 
     res.json({
       success: true,
