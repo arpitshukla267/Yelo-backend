@@ -6,6 +6,12 @@ const seedShops = require("../shop/shop.seed")
 async function deleteAllProducts(req, res) {
   try {
     const result = await Product.deleteMany({})
+    
+    // Update category counts in background (non-blocking)
+    updateCategoryCounts().catch(err => {
+      console.error('Error updating category counts after delete all:', err.message)
+    })
+    
     res.json({ success: true, message: `Deleted ${result.deletedCount} products.` })
   } catch (error) {
     console.error("Error deleting all products:", error)
@@ -20,6 +26,12 @@ async function deleteProductsByCriteria(req, res) {
       return res.status(400).json({ success: false, message: "Deletion criteria cannot be empty." })
     }
     const result = await Product.deleteMany(criteria)
+    
+    // Update category counts in background (non-blocking)
+    updateCategoryCounts().catch(err => {
+      console.error('Error updating category counts after delete by criteria:', err.message)
+    })
+    
     res.json({ success: true, message: `Deleted ${result.deletedCount} products matching criteria.`, criteria })
   } catch (error) {
     console.error("Error deleting products by criteria:", error)
@@ -72,7 +84,7 @@ async function reassignAndSyncProducts(req, res) {
 
         // Create category if it doesn't exist
         if (product.category) {
-          const majorCategory = product.majorCategory || (product.price <= 1000 ? "AFFORDABLE" : "LUXURY")
+          const majorCategory = product.majorCategory || (product.price <= 2000 ? "AFFORDABLE" : "LUXURY")
           await ensureCategory(product.category, product.productType, majorCategory)
           categoryCount++
         }
@@ -117,7 +129,7 @@ async function migrateCategories(req, res) {
     const products = await Product.find({ isActive: true })
     for (const product of products) {
       if (product.category) {
-        const majorCategory = product.majorCategory || (product.price <= 1000 ? "AFFORDABLE" : "LUXURY")
+        const majorCategory = product.majorCategory || (product.price <= 2000 ? "AFFORDABLE" : "LUXURY")
         await ensureCategory(product.category, product.productType, majorCategory)
       }
     }
@@ -190,7 +202,7 @@ async function createCategoriesFromProducts(req, res) {
     for (const product of products) {
       try {
         if (product.category) {
-          const majorCategory = product.majorCategory || (product.price <= 1000 ? "AFFORDABLE" : "LUXURY")
+          const majorCategory = product.majorCategory || (product.price <= 2000 ? "AFFORDABLE" : "LUXURY")
           await ensureCategory(product.category, product.productType, majorCategory)
           
           if (!categoriesCreated.has(product.category)) {

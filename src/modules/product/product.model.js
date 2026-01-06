@@ -173,7 +173,7 @@ productSchema.pre("validate", function () {
     this.slug = `${this.baseSlug}-${this.vendorSlug}`
   }
 
-  this.majorCategory = this.price <= 1000 ? "AFFORDABLE" : "LUXURY"
+  this.majorCategory = this.price <= 2000 ? "AFFORDABLE" : "LUXURY"
   
   // Auto-populate subcategory from productType if not set
   if (this.productType && !this.subcategory) {
@@ -195,6 +195,12 @@ productSchema.post('save', async function() {
   try {
     const { assignProductToShops } = require("../assignment/assignment.service")
     await assignProductToShops(this)
+    
+    // Update category counts in background (non-blocking)
+    const { updateCategoryCounts } = require("../category/category.service")
+    updateCategoryCounts().catch(err => {
+      console.error('Error updating category counts after product save:', err.message)
+    })
   } catch (error) {
     console.error(`Error auto-assigning product ${this._id} to shops:`, error.message)
     // Don't throw - assignment failure shouldn't prevent product save
@@ -207,9 +213,43 @@ productSchema.post('findOneAndUpdate', async function(doc) {
     try {
       const { assignProductToShops } = require("../assignment/assignment.service")
       await assignProductToShops(doc)
+      
+      // Update category counts in background (non-blocking)
+      const { updateCategoryCounts } = require("../category/category.service")
+      updateCategoryCounts().catch(err => {
+        console.error('Error updating category counts after product update:', err.message)
+      })
     } catch (error) {
       console.error(`Error auto-assigning product ${doc._id} to shops:`, error.message)
     }
+  }
+})
+
+// Update category counts after product deletion (for findOneAndDelete, findByIdAndDelete, etc.)
+productSchema.post('findOneAndDelete', async function(doc) {
+  if (doc) {
+    try {
+      const { updateCategoryCounts } = require("../category/category.service")
+      // Run in background - don't block deletion
+      updateCategoryCounts().catch(err => {
+        console.error('Error updating category counts after product delete:', err.message)
+      })
+    } catch (error) {
+      console.error('Error in post-delete hook:', error.message)
+    }
+  }
+})
+
+// Update category counts after product removal (for document.remove())
+productSchema.post('remove', async function() {
+  try {
+    const { updateCategoryCounts } = require("../category/category.service")
+    // Run in background - don't block deletion
+    updateCategoryCounts().catch(err => {
+      console.error('Error updating category counts after product remove:', err.message)
+    })
+  } catch (error) {
+    console.error('Error in post-remove hook:', error.message)
   }
 })
 

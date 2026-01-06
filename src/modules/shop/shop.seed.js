@@ -7,7 +7,7 @@ const shops = [
     route: "/affordable",
     majorCategory: "AFFORDABLE",
     shopType: "PRICE_BASED",
-    criteria: { priceMax: 1000 },
+    criteria: { priceMax: 2000 },
     defaultSort: "popular",
     hasSidebar: false,
     hasBottomBar: true,
@@ -41,7 +41,7 @@ const shops = [
     route: "/deals",
     majorCategory: "AFFORDABLE",
     shopType: "DISCOUNT_BASED",
-    criteria: { priceMax: 1000, hasDiscount: true },
+    criteria: { priceMax: 2000, hasDiscount: true },
     defaultSort: "discount-high",
     hasSidebar: false,
     hasBottomBar: false
@@ -52,7 +52,7 @@ const shops = [
     route: "/new-arrivals",
     majorCategory: "AFFORDABLE",
     shopType: "TIME_BASED",
-    criteria: { priceMax: 1000, daysSinceAdded: 30 },
+    criteria: { priceMax: 2000, daysSinceAdded: 30 },
     defaultSort: "newest",
     hasSidebar: false,
     hasBottomBar: false
@@ -63,7 +63,7 @@ const shops = [
     route: "/offers",
     majorCategory: "AFFORDABLE",
     shopType: "DISCOUNT_BASED",
-    criteria: { priceMax: 1000, hasDiscount: true },
+    criteria: { priceMax: 2000, hasDiscount: true },
     defaultSort: "popular",
     hasSidebar: true,
     hasBottomBar: true
@@ -104,7 +104,7 @@ const shops = [
     route: "/todays-deal",
     majorCategory: "AFFORDABLE",
     shopType: "DISCOUNT_BASED",
-    criteria: { priceMax: 1000, hasDiscount: true, daysSinceAdded: 7 },
+    criteria: { priceMax: 2000, hasDiscount: true, daysSinceAdded: 7 },
     defaultSort: "discount-high",
     hasSidebar: false,
     hasBottomBar: false
@@ -115,7 +115,7 @@ const shops = [
     route: "/fresh-arrival",
     majorCategory: "AFFORDABLE",
     shopType: "TIME_BASED",
-    criteria: { priceMax: 1000, daysSinceAdded: 7 },
+    criteria: { priceMax: 2000, daysSinceAdded: 7 },
     defaultSort: "newest",
     hasSidebar: false,
     hasBottomBar: false
@@ -126,7 +126,7 @@ const shops = [
     route: "/luxury/shop",
     majorCategory: "LUXURY",
     shopType: "PRICE_BASED",
-    criteria: { priceMin: 1000 },
+    criteria: { priceMin: 2001 },
     defaultSort: "newest",
     hasSidebar: false,
     hasBottomBar: false,
@@ -139,7 +139,7 @@ const shops = [
     majorCategory: "LUXURY",
     shopType: "CATEGORY_BASED",
     parentShopSlug: "luxury-shop",
-    criteria: { priceMin: 1000, categoryMatch: "fragrances", nameMatch: "fragrances" },
+    criteria: { priceMin: 2001, categoryMatch: "fragrances", nameMatch: "fragrances" },
     defaultSort: "newest",
     uiTheme: "luxury"
   },
@@ -150,7 +150,7 @@ const shops = [
     majorCategory: "LUXURY",
     shopType: "CATEGORY_BASED",
     parentShopSlug: "luxury-shop",
-    criteria: { priceMin: 1000, categoryMatch: "lipsticks", nameMatch: "lipsticks" },
+    criteria: { priceMin: 2001, categoryMatch: "lipsticks", nameMatch: "lipsticks" },
     defaultSort: "newest",
     uiTheme: "luxury"
   },
@@ -161,7 +161,7 @@ const shops = [
     majorCategory: "LUXURY",
     shopType: "CATEGORY_BASED",
     parentShopSlug: "luxury-shop",
-    criteria: { priceMin: 1000, categoryMatch: "eyewear", nameMatch: "eyewear" },
+    criteria: { priceMin: 2001, categoryMatch: "eyewear", nameMatch: "eyewear" },
     defaultSort: "newest",
     uiTheme: "luxury"
   },
@@ -172,7 +172,7 @@ const shops = [
     majorCategory: "LUXURY",
     shopType: "CATEGORY_BASED",
     parentShopSlug: "luxury-shop",
-    criteria: { priceMin: 1000, categoryMatch: "foundation", nameMatch: "foundation" },
+    criteria: { priceMin: 2001, categoryMatch: "foundation", nameMatch: "foundation" },
     defaultSort: "newest",
     uiTheme: "luxury"
   },
@@ -183,7 +183,7 @@ const shops = [
     majorCategory: "LUXURY",
     shopType: "CATEGORY_BASED",
     parentShopSlug: "luxury-shop",
-    criteria: { priceMin: 1000, categoryMatch: "skincare", nameMatch: "skincare" },
+    criteria: { priceMin: 2001, categoryMatch: "skincare", nameMatch: "skincare" },
     defaultSort: "newest",
     uiTheme: "luxury"
   },
@@ -194,7 +194,7 @@ const shops = [
     majorCategory: "LUXURY",
     shopType: "CATEGORY_BASED",
     parentShopSlug: "luxury-shop",
-    criteria: { priceMin: 1000, categoryMatch: "watches" },
+    criteria: { priceMin: 2001, categoryMatch: "watches" },
     defaultSort: "newest",
     uiTheme: "luxury"
   }

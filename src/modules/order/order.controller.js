@@ -161,23 +161,65 @@ async function downloadInvoice(req, res) {
        .font('Helvetica')
     
     if (order.deliveryAddress) {
-      if (order.deliveryAddress.address) {
+      // Display full name if available
+      if (order.deliveryAddress.fullName) {
+        doc.font('Helvetica-Bold')
+        doc.text(order.deliveryAddress.fullName, 400, customerY, { width: 150 })
+        doc.font('Helvetica')
+        customerY += 15
+      }
+      
+      // Display phone if available
+      if (order.deliveryAddress.phone) {
+        doc.text(`Phone: ${order.deliveryAddress.phone}`, 400, customerY, { width: 150 })
+        customerY += 15
+      } else if (user?.phone) {
+        doc.text(`Phone: ${user.phone}`, 400, customerY, { width: 150 })
+        customerY += 15
+      }
+      
+      // Display address line 1 (House/Flat No., Building Name)
+      if (order.deliveryAddress.addressLine1) {
+        doc.text(order.deliveryAddress.addressLine1, 400, customerY, { width: 150 })
+        customerY += 15
+      } else if (order.deliveryAddress.address) {
+        // Fallback to old address field
         doc.text(order.deliveryAddress.address, 400, customerY, { width: 150 })
         customerY += 15
       }
-      const addressLine = [
+      
+      // Display address line 2 (Street, Area, Locality)
+      if (order.deliveryAddress.addressLine2) {
+        doc.text(order.deliveryAddress.addressLine2, 400, customerY, { width: 150 })
+        customerY += 15
+      }
+      
+      // Display area and block if available
+      const areaBlock = [
+        order.deliveryAddress.area,
+        order.deliveryAddress.block
+      ].filter(Boolean).join(', ')
+      if (areaBlock) {
+        doc.text(areaBlock, 400, customerY, { width: 150 })
+        customerY += 15
+      }
+      
+      // Display landmark if available
+      if (order.deliveryAddress.landmark) {
+        doc.text(`Landmark: ${order.deliveryAddress.landmark}`, 400, customerY, { width: 150 })
+        customerY += 15
+      }
+      
+      // Display city, state, pincode
+      const cityStatePincode = [
         order.deliveryAddress.city,
         order.deliveryAddress.state,
         order.deliveryAddress.pincode
       ].filter(Boolean).join(', ')
-      if (addressLine) {
-        doc.text(addressLine, 400, customerY, { width: 150 })
+      if (cityStatePincode) {
+        doc.text(cityStatePincode, 400, customerY, { width: 150 })
         customerY += 15
       }
-    }
-    
-    if (user?.phone) {
-      doc.text(`Phone: ${user.phone}`, 400, customerY, { width: 150 })
     }
 
     // Items Table Header

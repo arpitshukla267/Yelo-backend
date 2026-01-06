@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema(
       default: true
     },
 
-    // Address fields
+    // Address fields (keeping old fields for backward compatibility)
     address: {
       type: String
     },
@@ -49,6 +49,25 @@ const userSchema = new mongoose.Schema(
     },
     longitude: {
       type: Number
+    },
+    // Detailed address fields
+    fullName: {
+      type: String
+    },
+    addressLine1: {
+      type: String // House/Flat No., Building Name
+    },
+    addressLine2: {
+      type: String // Street, Area, Locality
+    },
+    area: {
+      type: String
+    },
+    block: {
+      type: String
+    },
+    landmark: {
+      type: String
     }
   },
   { timestamps: true }

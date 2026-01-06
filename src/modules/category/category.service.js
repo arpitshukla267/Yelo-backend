@@ -49,6 +49,10 @@ async function ensureCategory(categoryName, productType = null, majorCategory = 
  * Update category product counts based on actual products
  */
 async function updateCategoryCounts() {
+  // Clear cache before updating (force fresh data)
+  categoryCountsCache = null
+  categoryCountsCacheTime = null
+  
   const categories = await Category.find({ isActive: true })
   
   for (const category of categories) {
@@ -204,13 +208,69 @@ async function getActiveCategories(majorCategory = null, forceUpdateCounts = fal
     .lean()
     .select('-__v') // Exclude version field for faster queries
 
+  // Handle duplicate categories: merge subcategories from image category into non-image category
+  // This ensures we keep all subcategories (like "Jackets") even when filtering out image categories
+  const categoryMap = new Map()
+  const imageCategories = []
+  
+  for (const cat of categories) {
+    // Handle both "mens-wear" and "men's-wear" formats
+    const isMensWear = cat.slug === 'mens-wear' || cat.slug === "men's-wear"
+    const isWomensWear = cat.slug === 'womens-wear' || cat.slug === "women's-wear"
+    
+    if (isMensWear || isWomensWear) {
+      // Use a normalized key for lookup, but keep original slug in the data
+      const lookupKey = isMensWear ? 'mens-wear' : 'womens-wear'
+      
+      if (cat.image) {
+        // Store image category for merging
+        imageCategories.push({ ...cat, lookupKey })
+      } else {
+        // Store non-image category - merge subcategories if multiple exist
+        if (!categoryMap.has(lookupKey)) {
+          categoryMap.set(lookupKey, cat)
+        } else {
+          // Merge subcategories from this category into the existing one
+          const existingCat = categoryMap.get(lookupKey)
+          const existingSlugs = new Set(existingCat.subcategories.map(s => s.slug))
+          const subcategoriesToAdd = cat.subcategories.filter(s => !existingSlugs.has(s.slug))
+          if (subcategoriesToAdd.length > 0) {
+            existingCat.subcategories = [...existingCat.subcategories, ...subcategoriesToAdd]
+          }
+        }
+      }
+    } else {
+      categoryMap.set(cat.slug, cat)
+    }
+  }
+  
+  // Merge subcategories from image categories into non-image categories
+  for (const imageCat of imageCategories) {
+    const lookupKey = imageCat.lookupKey || (imageCat.slug === "men's-wear" ? 'mens-wear' : (imageCat.slug === "women's-wear" ? 'womens-wear' : imageCat.slug))
+    const nonImageCat = categoryMap.get(lookupKey)
+    if (nonImageCat) {
+      // Merge subcategories: add any missing ones from image category
+      const existingSlugs = new Set(nonImageCat.subcategories.map(s => s.slug))
+      const subcategoriesToAdd = imageCat.subcategories.filter(s => !existingSlugs.has(s.slug))
+      nonImageCat.subcategories = [...nonImageCat.subcategories, ...subcategoriesToAdd]
+    }
+  }
+  
   // Filter out categories that have images but no subcategories
-  // Also remove "Men's Wear" category if it has an image (keep only the one with icon)
+  // Also remove "Men's Wear" and "Women's Wear" categories if they have an image (keep only the one with icon)
   // Return all active subcategories (even with 0 products) so users can see them
-  const filtered = categories
+  const filtered = Array.from(categoryMap.values())
     .filter(cat => {
-      // Remove "Men's Wear" category if it has an image (keep only icon version)
-      if (cat.slug === 'mens-wear' && cat.image) {
+      // Remove "Men's Wear" category if it has an image (keep only icon version - already merged)
+      // Handle both "mens-wear" and "men's-wear" formats
+      const isMensWear = cat.slug === 'mens-wear' || cat.slug === "men's-wear"
+      const isWomensWear = cat.slug === 'womens-wear' || cat.slug === "women's-wear"
+      
+      if (isMensWear && cat.image) {
+        return false
+      }
+      // Remove "Women's Wear" category if it has an image (keep only icon version - already merged)
+      if (isWomensWear && cat.image) {
         return false
       }
       // If category has an image, it must have subcategories

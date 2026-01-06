@@ -7,7 +7,7 @@ const SORT_MAP = require("./product.sort")
 // =======================
 async function createProduct(payload) {
   payload.majorCategory =
-    payload.price <= 1000 ? "AFFORDABLE" : "LUXURY"
+    payload.price <= 2000 ? "AFFORDABLE" : "LUXURY"
 
   const product = await Product.create(payload)
 

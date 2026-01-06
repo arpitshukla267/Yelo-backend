@@ -313,10 +313,89 @@ exports.deleteSubcategory = async (req, res) => {
 // POST update category counts (admin endpoint)
 exports.updateCounts = async (req, res) => {
   try {
+    // First merge duplicate categories in database
+    const Category = require("./category.model")
+    
+    // Merge mens-wear duplicates (handle both "mens-wear" and "men's-wear" formats)
+    // Check for "men's-wear" first (the actual slug in the database)
+    const mensWearCategories = await Category.find({ 
+      $or: [
+        { slug: "men's-wear" },
+        { slug: 'mens-wear' }
+      ],
+      isActive: true 
+    })
+    
+    if (mensWearCategories.length > 0) {
+      const nonImageCategory = mensWearCategories.find(c => !c.image) || mensWearCategories[0]
+      
+      // Merge from image category if exists
+      const imageCategory = mensWearCategories.find(c => c.image && c._id.toString() !== nonImageCategory._id.toString())
+      if (imageCategory) {
+        const existingSlugs = new Set(nonImageCategory.subcategories.map(s => s.slug))
+        const subcategoriesToAdd = imageCategory.subcategories.filter(s => !existingSlugs.has(s.slug))
+        
+        if (subcategoriesToAdd.length > 0) {
+          nonImageCategory.subcategories.push(...subcategoriesToAdd)
+          await nonImageCategory.save()
+          console.log(`Merged ${subcategoriesToAdd.length} subcategories from mens-wear image category`)
+        }
+        
+        // Delete the image category permanently
+        await Category.deleteOne({ _id: imageCategory._id })
+        console.log(`Deleted duplicate mens-wear category with image`)
+      }
+      
+      // Ensure mens-jackets subcategory exists
+      const hasJackets = nonImageCategory.subcategories.some(s => 
+        s.slug === 'mens-jackets' || s.name === 'Jackets'
+      )
+      if (!hasJackets) {
+        nonImageCategory.subcategories.push({
+          name: "Jackets",
+          slug: "mens-jackets",
+          image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=400&fit=crop&q=80",
+          productCount: 0,
+          isActive: true
+        })
+        await nonImageCategory.save()
+        console.log(`Added Jackets subcategory to mens-wear category (slug: ${nonImageCategory.slug})`)
+      }
+    }
+    
+    // Handle womens-wear duplicates
+    const womensWearCategories = await Category.find({ 
+      $or: [
+        { slug: "women's-wear" },
+        { slug: 'womens-wear' }
+      ],
+      isActive: true 
+    })
+    
+    if (womensWearCategories.length > 1) {
+      const imageCategory = womensWearCategories.find(c => c.image)
+      const nonImageCategory = womensWearCategories.find(c => !c.image)
+      
+      if (imageCategory && nonImageCategory) {
+        const existingSlugs = new Set(nonImageCategory.subcategories.map(s => s.slug))
+        const subcategoriesToAdd = imageCategory.subcategories.filter(s => !existingSlugs.has(s.slug))
+        
+        if (subcategoriesToAdd.length > 0) {
+          nonImageCategory.subcategories.push(...subcategoriesToAdd)
+          await nonImageCategory.save()
+          console.log(`Merged ${subcategoriesToAdd.length} subcategories from womens-wear image category`)
+        }
+        
+        // Delete the image category permanently
+        await Category.deleteOne({ _id: imageCategory._id })
+        console.log(`Deleted duplicate womens-wear category with image`)
+      }
+    }
+    
     await updateCategoryCounts()
     res.json({
       success: true,
-      message: "Category counts updated"
+      message: "Category counts updated and duplicates merged"
     })
   } catch (err) {
     res.status(500).json({

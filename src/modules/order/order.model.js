@@ -57,12 +57,21 @@ const orderSchema = new mongoose.Schema(
 
     // Delivery address
     deliveryAddress: {
+      // Keeping old fields for backward compatibility
       address: String,
       city: String,
       state: String,
       pincode: String,
       latitude: Number,
-      longitude: Number
+      longitude: Number,
+      // Detailed address fields
+      fullName: String,
+      phone: String,
+      addressLine1: String, // House/Flat No., Building Name
+      addressLine2: String, // Street, Area, Locality
+      area: String,
+      block: String,
+      landmark: String
     },
 
     paymentMethod: {
