@@ -338,3 +338,112 @@ exports.createBulkProducts = async (req, res) => {
     })
   }
 }
+
+// UPDATE product by ID
+exports.updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params
+    const updateData = req.body
+    
+    // Find and update product
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    )
+    
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found"
+      })
+    }
+    
+    // Reassign to shops if price/category changed
+    if (updateData.price || updateData.category || updateData.majorCategory) {
+      const { assignProductToShops } = require("../assignment/assignment.service")
+      await assignProductToShops(product)
+    }
+    
+    // Update category counts if category changed
+    if (updateData.category) {
+      const { updateCategoryCounts } = require("../category/category.service")
+      updateCategoryCounts().catch(err => {
+        console.error('Error updating category counts:', err.message)
+      })
+    }
+    
+    res.json({
+      success: true,
+      data: product
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
+// DELETE product by ID
+exports.deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const product = await Product.findByIdAndDelete(id)
+    
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found"
+      })
+    }
+    
+    // Update category counts
+    const { updateCategoryCounts } = require("../category/category.service")
+    updateCategoryCounts().catch(err => {
+      console.error('Error updating category counts after delete:', err.message)
+    })
+    
+    res.json({
+      success: true,
+      message: "Product deleted successfully"
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
+// PATCH product by ID (partial update)
+exports.patchProduct = async (req, res) => {
+  try {
+    const { id } = req.params
+    const updateData = req.body
+    
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    )
+    
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found"
+      })
+    }
+    
+    res.json({
+      success: true,
+      data: product
+    })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}

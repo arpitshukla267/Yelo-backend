@@ -13,6 +13,15 @@ router.post("/admin/populate-subcategories", adminController.populateSubcategori
 router.post("/admin/migrate-categories", adminController.migrateCategories)
 router.post("/admin/seed-shops", adminController.seedShopsEndpoint)
 
+// PUT/PATCH/DELETE routes (admin) - Must be before GET routes to avoid conflicts
+router.put("/:id", controller.updateProduct)
+router.patch("/:id", controller.patchProduct)
+router.delete("/:id", controller.deleteProduct)
+
+// POST routes (admin)
+router.post("/", controller.createProduct)
+router.post("/bulk", controller.createBulkProducts)
+
 // GET routes (public)
 router.get("/", controller.getAllProducts)
 router.get("/trending", controller.getTrendingProducts)
@@ -21,9 +30,5 @@ router.get("/vendor/:vendorSlug", controller.getProductsByVendor)
 // Use regex to capture slugs with slashes (e.g., vendor-slug/product-slug)
 // This matches any path that doesn't start with the above routes
 router.get(/^\/(.+)$/, controller.getProductBySlug) // Must be last to avoid conflicts
-
-// POST routes (admin)
-router.post("/", controller.createProduct)
-router.post("/bulk", controller.createBulkProducts)
 
 module.exports = router
