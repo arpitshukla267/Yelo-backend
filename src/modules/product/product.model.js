@@ -9,17 +9,19 @@ const productSchema = new mongoose.Schema(
     },
 
     // base slug from product name (not unique)
+    // Auto-generated from name if not provided
     baseSlug: {
       type: String,
-      required: true,
+      required: false, // Will be auto-generated in pre-validate hook
       lowercase: true,
       trim: true
     },
 
     // FINAL slug used in URL (unique)
+    // Auto-generated from baseSlug and vendorSlug if not provided
     slug: {
       type: String,
-      required: true,
+      required: false, // Will be auto-generated in pre-validate hook
       unique: true,
       index: true,
       lowercase: true,
@@ -149,9 +151,10 @@ const productSchema = new mongoose.Schema(
     },
 
     // vendor identifier
+    // Optional - if not provided, slug will use timestamp for uniqueness
     vendorSlug: {
       type: String,
-      required: true,
+      required: false, // Optional - will use timestamp in slug if missing
       index: true,
       lowercase: true,
       trim: true
@@ -167,10 +170,34 @@ const productSchema = new mongoose.Schema(
  * 2. majorCategory
  */
 productSchema.pre("validate", function () {
+  // Auto-generate baseSlug from name if not provided
+  if (!this.baseSlug && this.name) {
+    this.baseSlug = this.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+  }
+
   // Generate slug as baseSlug-vendorSlug for database uniqueness
   // Frontend will construct vendor-slug/product-slug URLs for SEO
-  if (this.baseSlug && this.vendorSlug) {
-    this.slug = `${this.baseSlug}-${this.vendorSlug}`
+  if (!this.slug) {
+    if (this.baseSlug && this.vendorSlug) {
+      this.slug = `${this.baseSlug}-${this.vendorSlug}`
+    } else if (this.baseSlug) {
+      // If vendorSlug is missing, use baseSlug with timestamp to ensure uniqueness
+      this.slug = `${this.baseSlug}-${Date.now()}`
+    }
+  }
+
+  // Ensure slug and baseSlug are set (validation will fail if not)
+  if (!this.baseSlug) {
+    throw new Error('baseSlug is required. Provide either baseSlug or name field.')
+  }
+  if (!this.slug) {
+    throw new Error('slug is required. Provide either slug or both baseSlug and vendorSlug fields.')
   }
 
   this.majorCategory = this.price <= 2000 ? "AFFORDABLE" : "LUXURY"

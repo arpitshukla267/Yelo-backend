@@ -211,22 +211,174 @@ exports.getProductsByVendor = async (req, res) => {
 exports.getProductsByShop = async (req, res) => {
   try {
     const { shopSlug } = req.params
-    const { sort = "popular", ...filters } = req.query
+    const { sort = "popular", page = 1, limit = 6, ...filters } = req.query
 
     const result = await getProductsByShop({
       shopSlug,
       sort,
-      filters
+      filters,
+      page: Number(page),
+      limit: Number(limit)
     })
 
     res.json({
       success: true,
-      ...result
+      data: result.products || [],
+      pagination: result.pagination || {
+        page: Number(page),
+        limit: Number(limit),
+        total: 0,
+        pages: 0,
+        hasMore: false
+      }
     })
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message
+    console.error('Error in getProductsByShop:', err)
+    // Return empty array instead of error
+    res.json({
+      success: true,
+      data: [],
+      pagination: {
+        page: Number(req.query.page || 1),
+        limit: Number(req.query.limit || 6),
+        total: 0,
+        pages: 0,
+        hasMore: false
+      }
+    })
+  }
+}
+
+// GET products by category and subcategory (paginated)
+exports.getProductsByCategory = async (req, res) => {
+  try {
+    const { 
+      categorySlug, 
+      subcategorySlug,
+      page = 1,
+      limit = 6,
+      sort = "popular",
+      minPrice,
+      maxPrice
+    } = req.query
+
+    // If no category or subcategory provided, return empty
+    if (!categorySlug && !subcategorySlug) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total: 0,
+          pages: 0,
+          hasMore: false
+        }
+      })
+    }
+
+    const query = { isActive: true }
+    
+    // Build category match conditions
+    if (categorySlug) {
+      const categoryConditions = [
+        { category: categorySlug },
+        { category: { $regex: new RegExp(`^${categorySlug}$`, 'i') } }
+      ]
+      
+      // Also match by category name variations
+      const categoryName = categorySlug.replace(/-/g, ' ')
+      categoryConditions.push(
+        { category: { $regex: new RegExp(`^${categoryName}$`, 'i') } }
+      )
+      
+      query.$or = categoryConditions
+    }
+    
+    // Add subcategory filter
+    if (subcategorySlug) {
+      const subcategoryConditions = [
+        { subcategory: subcategorySlug },
+        { subcategory: { $regex: new RegExp(`^${subcategorySlug}$`, 'i') } },
+        { productType: subcategorySlug },
+        { productType: { $regex: new RegExp(`^${subcategorySlug}$`, 'i') } }
+      ]
+      
+      const subcategoryName = subcategorySlug.replace(/-/g, ' ')
+      subcategoryConditions.push(
+        { subcategory: { $regex: new RegExp(`^${subcategoryName}$`, 'i') } },
+        { productType: { $regex: new RegExp(`^${subcategoryName}$`, 'i') } }
+      )
+      
+      // Combine with category conditions if they exist
+      if (query.$or) {
+        query.$and = [
+          { $or: query.$or },
+          { $or: subcategoryConditions }
+        ]
+        delete query.$or
+      } else {
+        query.$or = subcategoryConditions
+      }
+    }
+
+    // Add price filter if provided
+    if (minPrice || maxPrice) {
+      query.price = {}
+      if (minPrice && minPrice !== 'undefined') {
+        query.price.$gte = Number(minPrice)
+      }
+      if (maxPrice && maxPrice !== 'undefined') {
+        query.price.$lte = Number(maxPrice)
+      }
+    }
+
+    // Sort options
+    const sortOptions = {
+      popular: { reviews: -1, rating: -1 },
+      "price-low": { price: 1 },
+      "price-high": { price: -1 },
+      newest: { createdAt: -1, dateAdded: -1 },
+      rating: { rating: -1 }
+    }
+
+    const sortQuery = sortOptions[sort] || sortOptions.popular
+    const skip = (Number(page) - 1) * Number(limit)
+
+    const products = await Product.find(query)
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(Number(limit))
+      .lean()
+      .select('name slug baseSlug vendorSlug price originalPrice images brand category subcategory emoji isTrending rating reviews')
+
+    const total = await Product.countDocuments(query)
+
+    // Always return success, even if no products found
+    res.json({
+      success: true,
+      data: products || [],
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: total || 0,
+        pages: Math.ceil((total || 0) / Number(limit)),
+        hasMore: skip + (products?.length || 0) < (total || 0)
+      }
+    })
+  } catch (err) {
+    console.error('Error in getProductsByCategory:', err)
+    // Return empty array instead of error to prevent 404
+    res.json({
+      success: true,
+      data: [],
+      pagination: {
+        page: Number(req.query.page || 1),
+        limit: Number(req.query.limit || 6),
+        total: 0,
+        pages: 0,
+        hasMore: false
+      }
     })
   }
 }

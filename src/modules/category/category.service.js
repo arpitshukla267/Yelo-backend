@@ -245,6 +245,7 @@ async function getActiveCategories(majorCategory = null, forceUpdateCounts = fal
   }
   
   // Merge subcategories from image categories into non-image categories
+  // If no non-image category exists, keep the image category
   for (const imageCat of imageCategories) {
     const lookupKey = imageCat.lookupKey || (imageCat.slug === "men's-wear" ? 'mens-wear' : (imageCat.slug === "women's-wear" ? 'womens-wear' : imageCat.slug))
     const nonImageCat = categoryMap.get(lookupKey)
@@ -252,32 +253,35 @@ async function getActiveCategories(majorCategory = null, forceUpdateCounts = fal
       // Merge subcategories: add any missing ones from image category
       const existingSlugs = new Set(nonImageCat.subcategories.map(s => s.slug))
       const subcategoriesToAdd = imageCat.subcategories.filter(s => !existingSlugs.has(s.slug))
-      nonImageCat.subcategories = [...nonImageCat.subcategories, ...subcategoriesToAdd]
+      if (subcategoriesToAdd.length > 0) {
+        nonImageCat.subcategories = [...nonImageCat.subcategories, ...subcategoriesToAdd]
+      }
+    } else {
+      // No non-image category exists - keep the image category
+      categoryMap.set(lookupKey, imageCat)
     }
   }
-  
-  // Filter out categories that have images but no subcategories
-  // Also remove "Men's Wear" and "Women's Wear" categories if they have an image (keep only the one with icon)
-  // Return all active subcategories (even with 0 products) so users can see them
+
+  // Return all active categories
+  // The categoryMap already handles duplicates - prefer non-image versions but keep image if it's the only one
   const filtered = Array.from(categoryMap.values())
     .filter(cat => {
-      // Remove "Men's Wear" category if it has an image (keep only icon version - already merged)
-      // Handle both "mens-wear" and "men's-wear" formats
+      // All categories in the map are valid (duplicates already handled)
+      // Only filter out categories with images that don't have subcategories (for non-mens/womens categories)
       const isMensWear = cat.slug === 'mens-wear' || cat.slug === "men's-wear"
       const isWomensWear = cat.slug === 'womens-wear' || cat.slug === "women's-wear"
       
-      if (isMensWear && cat.image) {
-        return false
+      // For mens-wear and womens-wear: keep them (duplicates already handled in map)
+      if (isMensWear || isWomensWear) {
+        return true
       }
-      // Remove "Women's Wear" category if it has an image (keep only icon version - already merged)
-      if (isWomensWear && cat.image) {
-        return false
-      }
-      // If category has an image, it must have subcategories
+      
+      // For other categories with images: they must have subcategories
       if (cat.image) {
         return cat.subcategories && Array.isArray(cat.subcategories) && cat.subcategories.length > 0
       }
-      // Categories without images are valid
+      
+      // All other categories are valid
       return true
     })
     .map(cat => ({

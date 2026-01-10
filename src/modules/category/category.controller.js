@@ -3,14 +3,155 @@ const { getActiveCategories, getCategoryBySlug, updateCategoryCounts, ensureCate
 // GET all categories with products
 exports.getAllCategories = async (req, res) => {
   try {
-    const { majorCategory, forceUpdate } = req.query
+    const { majorCategory, forceUpdate, lightweight, includeInactive } = req.query
     // Only force update if explicitly requested (for admin use)
     const forceUpdateCounts = forceUpdate === 'true'
-    const categories = await getActiveCategories(majorCategory || null, forceUpdateCounts)
+    const isLightweight = lightweight === 'true'
+    const showInactive = includeInactive === 'true' // For admin panel
+    
+    if (isLightweight) {
+      try {
+        // NO FILTERING - Return ALL categories from database
+        const Category = require("./category.model")
+        
+        // Only filter by majorCategory if specified, otherwise get ALL
+        const baseQuery = {}
+        if (majorCategory) {
+          baseQuery.majorCategory = { $in: [majorCategory, "ALL"] }
+        }
+
+        // Get total count first to verify we get all categories
+        const totalCount = await Category.countDocuments(baseQuery)
+        console.log(`[Categories API Lightweight] Total categories matching query: ${totalCount}`)
+        console.log(`[Categories API Lightweight] Query:`, JSON.stringify(baseQuery))
+        
+        // Get ALL categories - NO FILTERING, NO DUPLICATE HANDLING, NO LIMITS
+        // Use baseQuery (not empty object) to ensure consistency with regular endpoint
+        // Return EVERYTHING from database (both active and inactive)
+        // Use simple find() with allowDiskUse for large datasets (no explicit limit needed)
+        const allCategoriesRaw = await Category.find(baseQuery)
+          .sort({ name: 1 })
+          .allowDiskUse(true) // Allow using disk for sorting large datasets
+          .maxTimeMS(30000) // 30 second timeout
+          .lean()
+        
+        console.log(`[Categories API Lightweight] Retrieved ${allCategoriesRaw?.length || 0} raw categories from database`)
+        
+        // Log ALL raw categories with their image status
+        if (allCategoriesRaw && allCategoriesRaw.length > 0) {
+          console.log(`[Categories API Lightweight] Raw categories breakdown:`)
+          allCategoriesRaw.forEach((cat, idx) => {
+            console.log(`  [${idx + 1}] ${cat.name} (${cat.slug}) - image: ${cat.image ? 'YES (' + (cat.image.length > 50 ? cat.image.substring(0, 50) + '...' : cat.image) + ')' : 'NO'}, isActive: ${cat.isActive}`)
+          })
+        }
+        
+        // Manually select only the fields needed for lightweight endpoint
+        // This ensures we get ALL categories regardless of field sizes
+        const categoriesArray = (allCategoriesRaw || []).map(cat => {
+          const result = {
+            name: cat.name,
+            slug: cat.slug,
+            image: cat.image || null, // Preserve image even if null - DO NOT filter out
+            productCount: cat.productCount || 0,
+            isActive: cat.isActive !== undefined ? cat.isActive : true,
+            majorCategory: cat.majorCategory || 'ALL'
+          }
+          
+          // Log if image is being preserved
+          if (cat.image && !result.image) {
+            console.warn(`[Categories API Lightweight] WARNING: Lost image for ${cat.name} (${cat.slug})`)
+          }
+          
+          return result
+        })
+        
+        console.log(`[Categories API Lightweight] Processed ${categoriesArray.length} categories`)
+        
+        // Log categories with images for debugging
+        if (categoriesArray && categoriesArray.length > 0) {
+          const withImages = categoriesArray.filter(c => c.image)
+          const withoutImages = categoriesArray.filter(c => !c.image)
+          console.log(`[Categories API Lightweight] Categories with images: ${withImages.length}`, withImages.map(c => `${c.name}(${c.slug})`))
+          console.log(`[Categories API Lightweight] Categories without images: ${withoutImages.length}`, withoutImages.map(c => `${c.name}(${c.slug})`))
+          
+          // Check if we're missing any categories
+          if (categoriesArray.length !== totalCount && Object.keys(baseQuery).length === 0) {
+            console.error(`[Categories API Lightweight] WARNING: Expected ${totalCount} categories but processed ${categoriesArray.length}`)
+          }
+        }
+        
+        // Final verification before sending response
+        const responseData = {
+          success: true,
+          data: categoriesArray,
+          count: categoriesArray.length,
+          breakdown: {
+            total: categoriesArray.length,
+            withImages: categoriesArray.filter(c => c.image).length,
+            withoutImages: categoriesArray.filter(c => !c.image).length
+          }
+        }
+        
+        console.log(`[Categories API Lightweight] Final response:`, {
+          total: responseData.count,
+          withImages: responseData.breakdown.withImages,
+          withoutImages: responseData.breakdown.withoutImages,
+          categorySlugsWithImages: categoriesArray.filter(c => c.image).map(c => c.slug)
+        })
+        
+        return res.json(responseData)
+      } catch (err) {
+        console.error('Error in lightweight categories endpoint:', err)
+        return res.status(500).json({
+          success: false,
+          message: err.message || 'Failed to fetch categories',
+          data: []
+        })
+      }
+    }
+    
+    // For admin: return all categories without filtering (bypass getActiveCategories)
+    if (showInactive) {
+      const Category = require("./category.model")
+      const baseQuery = {}
+      
+      if (majorCategory) {
+        baseQuery.$and = [
+          {
+            $or: [
+              { majorCategory },
+              { majorCategory: "ALL" }
+            ]
+          }
+        ]
+      }
+
+      const categories = await Category.find(baseQuery)
+        .sort({ productCount: -1, name: 1 })
+        .lean()
+
+      return res.json({
+        success: true,
+        data: categories
+      })
+    }
+    
+    // Return ALL categories without filtering - use getActiveCategories but with no filtering
+    const Category = require("./category.model")
+    const baseQuery = {}
+    
+    if (majorCategory) {
+      baseQuery.majorCategory = { $in: [majorCategory, "ALL"] }
+    }
+    
+    // Get ALL categories with subcategories - no filtering
+    const categories = await Category.find(baseQuery)
+      .sort({ name: 1 })
+      .lean()
 
     res.json({
       success: true,
-      data: categories
+      data: categories || []
     })
   } catch (err) {
     res.status(500).json({
@@ -24,12 +165,35 @@ exports.getAllCategories = async (req, res) => {
 exports.getCategoryBySlug = async (req, res) => {
   try {
     const { slug } = req.params
+    const { lightweight } = req.query
     const category = await getCategoryBySlug(slug)
 
     if (!category) {
       return res.status(404).json({
         success: false,
         message: "Category not found"
+      })
+    }
+
+    // If lightweight, return only subcategories with name and image
+    if (lightweight === 'true') {
+      const lightweightCategory = {
+        _id: category._id,
+        name: category.name,
+        slug: category.slug,
+        image: category.image,
+        subcategories: (category.subcategories || []).map(sub => ({
+          _id: sub._id,
+          name: sub.name,
+          slug: sub.slug,
+          image: sub.image,
+          productCount: sub.productCount,
+          isActive: sub.isActive
+        }))
+      }
+      return res.json({
+        success: true,
+        data: lightweightCategory
       })
     }
 
@@ -108,22 +272,45 @@ exports.updateCategory = async (req, res) => {
     const { slug } = req.params
     const { name, majorCategory, image, icon, isActive } = req.body
 
-    const category = await Category.findOne({ slug })
+    // Handle both slug formats
+    let category = await Category.findOne({ slug })
+    
+    if (!category) {
+      // Try with apostrophe variations
+      category = await Category.findOne({ 
+        $or: [
+          { slug: slug.replace(/-/g, "'") },
+          { slug: slug.replace(/'/g, "-") }
+        ]
+      })
+    }
+    
     if (!category) {
       return res.status(404).json({
         success: false,
-        message: "Category not found"
+        message: `Category not found with slug: ${slug}`
       })
     }
 
+    // Update fields only if provided
     if (name) category.name = name
     if (majorCategory) category.majorCategory = majorCategory
     if (image !== undefined) category.image = image
     if (icon !== undefined) category.icon = icon
-    if (isActive !== undefined) category.isActive = isActive
+    // Only update isActive if explicitly provided, otherwise keep current value
+    if (isActive !== undefined) {
+      category.isActive = isActive
+    } else {
+      // Ensure category stays active if not explicitly set to inactive
+      if (category.isActive === undefined || category.isActive === null) {
+        category.isActive = true
+      }
+    }
 
     await category.save()
     await updateCategoryCounts()
+
+    console.log(`Category updated: ${category.name} (${category.slug}), isActive: ${category.isActive}`)
 
     res.json({
       success: true,
@@ -131,6 +318,7 @@ exports.updateCategory = async (req, res) => {
       data: category
     })
   } catch (err) {
+    console.error('Error updating category:', err)
     res.status(500).json({
       success: false,
       message: err.message
@@ -142,27 +330,83 @@ exports.updateCategory = async (req, res) => {
 exports.deleteCategory = async (req, res) => {
   try {
     const Category = require("./category.model")
+    const FreeSubcategory = require("./free-subcategory.model")
     const { slug } = req.params
 
-    const category = await Category.findOne({ slug })
+    // Handle both slug formats - try exact match first, then variations
+    let category = await Category.findOne({ slug })
+    
+    // If not found, try with apostrophe variations
+    if (!category) {
+      category = await Category.findOne({ 
+        $or: [
+          { slug: slug.replace(/-/g, "'") }, // Try with apostrophe (e.g., "men's-wear")
+          { slug: slug.replace(/'/g, "-") },  // Try without apostrophe (e.g., "mens-wear")
+          { slug: slug.replace(/-/g, " ") },  // Try with spaces
+          { slug: slug.replace(/\s+/g, "-") }  // Try with hyphens
+        ]
+      })
+    }
+    
     if (!category) {
       return res.status(404).json({
         success: false,
-        message: "Category not found"
+        message: `Category not found with slug: ${slug}`
       })
     }
 
-    // Soft delete - set isActive to false
-    category.isActive = false
-    await category.save()
+    console.log(`Deleting category: ${category.name} (${category.slug})`)
+
+    // Save subcategories as free subcategories before deleting
+    if (category.subcategories && category.subcategories.length > 0) {
+      console.log(`Moving ${category.subcategories.length} subcategories to free subcategories`)
+      
+      for (const subcat of category.subcategories) {
+        // Check if free subcategory already exists
+        const existingFree = await FreeSubcategory.findOne({ 
+          slug: subcat.slug
+        })
+        
+        if (!existingFree) {
+          await FreeSubcategory.create({
+            name: subcat.name,
+            slug: subcat.slug,
+            image: subcat.image || null,
+            icon: subcat.icon || null,
+            productCount: subcat.productCount || 0,
+            originalCategorySlug: category.slug,
+            originalCategoryName: category.name,
+            createdAt: subcat.createdAt || new Date(),
+            isActive: subcat.isActive !== false
+          })
+          console.log(`Created free subcategory: ${subcat.name}`)
+        } else {
+          console.log(`Free subcategory already exists: ${subcat.name}`)
+        }
+      }
+    }
+
+    // Hard delete the category (permanently remove)
+    const deleteResult = await Category.deleteOne({ _id: category._id })
+    
+    if (deleteResult.deletedCount === 0) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete category"
+      })
+    }
+
+    console.log(`Category deleted successfully: ${category.name}`)
 
     await updateCategoryCounts()
 
     res.json({
       success: true,
-      message: "Category deleted successfully"
+      message: "Category deleted successfully. Subcategories have been moved to free subcategories.",
+      deletedCount: deleteResult.deletedCount
     })
   } catch (err) {
+    console.error('Error deleting category:', err)
     res.status(500).json({
       success: false,
       message: err.message

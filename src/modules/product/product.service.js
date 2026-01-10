@@ -23,7 +23,9 @@ async function createProduct(payload) {
 async function getProductsByShop({
   shopSlug,
   sort = "popular",
-  filters = {}
+  filters = {},
+  page = 1,
+  limit = 6
 }) {
   const sortQuery = SORT_MAP[sort] || SORT_MAP.popular
 
@@ -35,8 +37,12 @@ async function getProductsByShop({
   // PRICE FILTER
   if (filters.minPrice || filters.maxPrice) {
     query.price = {}
-    if (filters.minPrice) query.price.$gte = Number(filters.minPrice)
-    if (filters.maxPrice) query.price.$lte = Number(filters.maxPrice)
+    if (filters.minPrice && filters.minPrice !== 'undefined' && !isNaN(Number(filters.minPrice))) {
+      query.price.$gte = Number(filters.minPrice)
+    }
+    if (filters.maxPrice && filters.maxPrice !== 'undefined' && !isNaN(Number(filters.maxPrice))) {
+      query.price.$lte = Number(filters.maxPrice)
+    }
   }
 
   // BRAND FILTER
@@ -54,7 +60,15 @@ async function getProductsByShop({
     query["colors.name"] = { $in: filters.color.split(",") }
   }
 
-  const products = await Product.find(query).sort(sortQuery).lean()
+  const skip = (Number(page) - 1) * Number(limit)
+  const total = await Product.countDocuments(query)
+
+  const products = await Product.find(query)
+    .sort(sortQuery)
+    .skip(skip)
+    .limit(Number(limit))
+    .lean()
+    .select('name slug baseSlug vendorSlug price originalPrice images brand category subcategory emoji isTrending rating reviews')
 
   // Add SEO-friendly URLs to products
   const productsWithSeoUrl = products.map(product => ({
@@ -65,7 +79,14 @@ async function getProductsByShop({
   }))
 
   return {
-    products: productsWithSeoUrl
+    products: productsWithSeoUrl,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+      hasMore: skip + products.length < total
+    }
   }
 }
 

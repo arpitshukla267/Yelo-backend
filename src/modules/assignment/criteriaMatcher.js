@@ -37,7 +37,7 @@ function matchesShopCriteria(product, criteria) {
       if (days > criteria.daysSinceAdded) return false
     }
   
-    // Category match - improved to handle variations
+    // Category match - improved to handle variations (including singular/plural)
     if (criteria.categoryMatch) {
       const categoryMatchLower = criteria.categoryMatch.toLowerCase()
       const categoryMatchWords = categoryMatchLower.split(/[\s-]+/).filter(w => w.length > 0)
@@ -50,19 +50,37 @@ function matchesShopCriteria(product, criteria) {
       // Combine all text for matching
       const combinedText = `${productCategory} ${productType} ${productName}`
       
-      // Check if categoryMatch is included in any of the fields
+      // Check if categoryMatch is included in any of the fields (direct match)
       if (combinedText.includes(categoryMatchLower)) {
         // Direct match found
-      } else if (categoryMatchWords.length > 0) {
-        // Check if all words from categoryMatch are present
-        const allWordsMatch = categoryMatchWords.every(word => 
-          productCategory.includes(word) || 
-          productType.includes(word) || 
-          productName.includes(word)
-        )
-        if (!allWordsMatch) return false
       } else {
-        return false
+        // Try reverse matching: check if product text includes categoryMatch or vice versa
+        // This handles singular/plural variations (e.g., "sweatshirt" matches "sweatshirts")
+        const categoryMatchBase = categoryMatchLower.replace(/s$/, '') // Remove trailing 's' for plural
+        const productTextBase = combinedText.replace(/s$/, '') // Remove trailing 's' from product text
+        
+        // Check if base forms match (handles singular/plural)
+        const baseMatch = categoryMatchBase === productTextBase || 
+                         combinedText.includes(categoryMatchBase) ||
+                         categoryMatchLower.includes(productTextBase.split(' ').pop()) // Check last word
+        
+        if (baseMatch) {
+          // Base match found (singular/plural handled)
+        } else if (categoryMatchWords.length > 0) {
+          // Check if all words from categoryMatch are present (word-by-word matching)
+          const allWordsMatch = categoryMatchWords.every(word => {
+            const wordBase = word.replace(/s$/, '') // Remove trailing 's'
+            return productCategory.includes(word) || 
+                   productCategory.includes(wordBase) ||
+                   productType.includes(word) || 
+                   productType.includes(wordBase) ||
+                   productName.includes(word) ||
+                   productName.includes(wordBase)
+          })
+          if (!allWordsMatch) return false
+        } else {
+          return false
+        }
       }
     }
 

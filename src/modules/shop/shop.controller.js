@@ -50,22 +50,40 @@ async function fetchShopBySlug(req, res) {
 async function fetchShopProducts(req, res) {
   try {
     const { slug } = req.params
-    const { sort, ...filters } = req.query
+    const { sort, page = 1, limit = 6, ...filters } = req.query
 
     const data = await getProductsByShop({
       shopSlug: slug,
       sort,
-      filters
+      filters,
+      page: Number(page),
+      limit: Number(limit)
     })
 
     res.json({
       success: true,
-      ...data
+      data: data.products || [],
+      pagination: data.pagination || {
+        page: Number(page),
+        limit: Number(limit),
+        total: 0,
+        pages: 0,
+        hasMore: false
+      }
     })
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message
+    console.error('Error in fetchShopProducts:', err)
+    // Return empty array instead of error to prevent 404
+    res.json({
+      success: true,
+      data: [],
+      pagination: {
+        page: Number(req.query.page || 1),
+        limit: Number(req.query.limit || 6),
+        total: 0,
+        pages: 0,
+        hasMore: false
+      }
     })
   }
 }

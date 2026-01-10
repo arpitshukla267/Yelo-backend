@@ -22,6 +22,12 @@ const orderSchema = new mongoose.Schema(
         price: {
           type: Number,
           required: true
+        },
+        color: {
+          type: String
+        },
+        size: {
+          type: String
         }
       }
     ],
@@ -76,7 +82,21 @@ const orderSchema = new mongoose.Schema(
 
     paymentMethod: {
       type: String
-    }
+    },
+
+    assignedShop: {
+      type: String
+    },
+
+    statusHistory: [
+      {
+        status: String,
+        updatedAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ]
   },
   { timestamps: true }
 )

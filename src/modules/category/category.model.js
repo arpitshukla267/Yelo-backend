@@ -37,10 +37,9 @@ const categorySchema = new mongoose.Schema(
     slug: {
       type: String,
       required: true,
-      unique: true,
+      unique: true, // unique: true automatically creates an index, so no need for index: true
       lowercase: true,
-      trim: true,
-      index: true
+      trim: true
     },
     icon: String,
     image: String,

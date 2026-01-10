@@ -14,7 +14,9 @@ async function placeOrder(userId, orderData = {}) {
     orderItems = orderData.items.map(item => ({
       productId: item.productId,
       quantity: item.quantity || 1,
-      price: item.price
+      price: item.price,
+      color: item.color,
+      size: item.size
     }))
     totalAmount = orderData.totalAmount || orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
     
@@ -53,7 +55,9 @@ async function placeOrder(userId, orderData = {}) {
     orderItems = cart.items.map(i => ({
       productId: i.productId._id,
       quantity: i.quantity,
-      price: i.priceAtAdd
+      price: i.priceAtAdd,
+      color: i.color,
+      size: i.size
     }))
 
     totalAmount = cart.items.reduce(

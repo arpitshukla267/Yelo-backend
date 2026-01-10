@@ -80,10 +80,176 @@ const shops = [
     hasBottomBar: false
   },
   // Price Spot Section - Individual shops for each category
-  // Add your Price Spot shops here using the template below
+  {
+    slug: "price-spot-tshirts",
+    name: "T-Shirts",
+    route: "/price-spot/tshirt-under-299",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 299,
+      categoryMatch: "tshirts"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot-sweatshirts",
+    name: "Sweatshirts",
+    route: "/price-spot/sweatshirt-under-799",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 799,
+      categoryMatch: "sweatshirts"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot-tracksuits",
+    name: "Tracksuits",
+    route: "/price-spot/tracksuit-under-899",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 899,
+      categoryMatch: "tracksuits"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot-sweaters",
+    name: "Sweaters",
+    route: "/price-spot/sweater-under-599",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 599,
+      categoryMatch: "sweaters"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot-kurta-sets",
+    name: "Kurta Sets",
+    route: "/price-spot/kurta-set-under-599",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 599,
+      categoryMatch: "kurta-sets"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "price-spot-face-wash",
+    name: "Face Wash and Cleanser",
+    route: "/price-spot/face-wash-under-199",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 199,
+      categoryMatch: "face-wash"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
   
   // Super Savers Section - Individual shops for each category
-  // Add your Super Savers shops here using the template below
+  {
+    slug: "super-savers-jackets",
+    name: "Jackets",
+    route: "/super-savers/jacket-under-949",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 949,
+      categoryMatch: "jackets"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-kurta-sets",
+    name: "Kurta Sets",
+    route: "/super-savers/kurta-set-under-1099",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 1099,
+      categoryMatch: "kurta-sets"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-sneakers",
+    name: "Sneakers",
+    route: "/super-savers/sneaker-under-1299",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 1299,
+      categoryMatch: "sneakers"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-sweaters",
+    name: "Sweaters",
+    route: "/super-savers/sweater-under-549",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 549,
+      categoryMatch: "sweaters"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-kurtas",
+    name: "Kurtas",
+    route: "/super-savers/kurta-under-349",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 349,
+      categoryMatch: "kurtas"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
+  {
+    slug: "super-savers-home-decor",
+    name: "Home Decor",
+    route: "/super-savers/home-decor-under-799",
+    majorCategory: "AFFORDABLE",
+    shopType: "CATEGORY_BASED",
+    criteria: {
+      priceMax: 799,
+      categoryMatch: "home-decor"
+    },
+    defaultSort: "price-low",
+    hasSidebar: false,
+    hasBottomBar: true
+  },
   {
     slug: "featured-brands",
     name: "Featured Brands",
