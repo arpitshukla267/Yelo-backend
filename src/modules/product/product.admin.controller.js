@@ -84,7 +84,7 @@ async function reassignAndSyncProducts(req, res) {
 
         // Create category if it doesn't exist
         if (product.category) {
-          const majorCategory = product.majorCategory || (product.price <= 2000 ? "AFFORDABLE" : "LUXURY")
+          const majorCategory = product.majorCategory || (product.price <= 1500 ? "AFFORDABLE" : "LUXURY")
           await ensureCategory(product.category, product.productType, majorCategory)
           categoryCount++
         }
@@ -202,7 +202,7 @@ async function createCategoriesFromProducts(req, res) {
     for (const product of products) {
       try {
         if (product.category) {
-          const majorCategory = product.majorCategory || (product.price <= 2000 ? "AFFORDABLE" : "LUXURY")
+          const majorCategory = product.majorCategory || (product.price <= 1500 ? "AFFORDABLE" : "LUXURY")
           await ensureCategory(product.category, product.productType, majorCategory)
           
           if (!categoriesCreated.has(product.category)) {
