@@ -392,7 +392,7 @@ exports.getTrendingProducts = async (req, res) => {
       isTrending: true,
       isActive: true
     })
-      .sort({ reviews: -1, rating: -1 })
+      .sort({ dateAdded: -1, createdAt: -1 }) // Sort by newest first for recently added trending products
       .limit(Number(limit))
       .lean()
 

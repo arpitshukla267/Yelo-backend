@@ -22,6 +22,14 @@ async function assignProductToShops(product) {
     }
   }
 
+  // If product is trending, also assign to trending shop
+  if (product.isTrending === true) {
+    const trendingShop = await Shop.findOne({ slug: 'trending' })
+    if (trendingShop && !matchedShopSlugs.includes('trending')) {
+      matchedShopSlugs.push('trending')
+    }
+  }
+
   // Remove duplicates (shouldn't be needed, but safe)
   const uniqueShopSlugs = [...new Set(matchedShopSlugs)]
 
