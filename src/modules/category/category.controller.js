@@ -126,7 +126,34 @@ exports.getCategoryBySlug = async (req, res) => {
   try {
     const { slug } = req.params
     const { lightweight } = req.query
-    const category = await getCategoryBySlug(slug)
+    
+    // Try to get category with slug variations
+    let category = await getCategoryBySlug(slug)
+
+    // If not found, try variations
+    if (!category) {
+      const Category = require("./category.model")
+      // Try with/without apostrophe
+      const variations = [
+        slug,
+        slug.replace(/-/g, "'s-"), // "mens-wear" -> "men's-wear"
+        slug.replace(/'/g, "-"),    // "men's-wear" -> "mens-wear"
+        slug.replace(/'s-/g, "-"),  // "men's-wear" -> "men-wear"
+        slug.toLowerCase(),
+        slug.replace(/-/g, ' '),
+        slug.replace(/\s+/g, '-')
+      ]
+      
+      for (const variation of variations) {
+        if (variation && variation !== slug) {
+          category = await Category.findOne({ 
+            slug: variation, 
+            isActive: true 
+          }).lean()
+          if (category) break
+        }
+      }
+    }
 
     if (!category) {
       return res.status(404).json({

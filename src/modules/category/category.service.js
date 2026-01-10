@@ -300,7 +300,18 @@ async function getActiveCategories(majorCategory = null, forceUpdateCounts = fal
  */
 async function getCategoryBySlug(slug) {
   await updateCategoryCounts()
-  return Category.findOne({ slug, isActive: true }).lean()
+  // Try exact match first
+  let category = await Category.findOne({ slug: slug, isActive: true }).lean()
+  
+  // If not found, try case-insensitive match
+  if (!category) {
+    category = await Category.findOne({ 
+      slug: { $regex: new RegExp(`^${slug}$`, 'i') }, 
+      isActive: true 
+    }).lean()
+  }
+  
+  return category
 }
 
 module.exports = {
