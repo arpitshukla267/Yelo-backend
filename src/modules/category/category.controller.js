@@ -29,7 +29,7 @@ exports.getAllCategories = async (req, res) => {
           .allowDiskUse(true) // Allow using disk for sorting large datasets
           .maxTimeMS(30000) // 30 second timeout
           .lean()
-        
+          
         // Manually select only the fields needed for lightweight endpoint
         // This ensures we get ALL categories regardless of field sizes
         const categoriesArray = (allCategoriesRaw || []).map(cat => {

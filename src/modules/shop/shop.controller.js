@@ -62,7 +62,7 @@ async function fetchShopProducts(req, res) {
 
     res.json({
       success: true,
-      data: data.products || [],
+      products: data.products || [],
       pagination: data.pagination || {
         page: Number(page),
         limit: Number(limit),
@@ -76,7 +76,7 @@ async function fetchShopProducts(req, res) {
     // Return empty array instead of error to prevent 404
     res.json({
       success: true,
-      data: [],
+      products: [],
       pagination: {
         page: Number(req.query.page || 1),
         limit: Number(req.query.limit || 6),
