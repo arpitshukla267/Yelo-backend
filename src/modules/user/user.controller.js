@@ -73,22 +73,6 @@ async function getMe(req, res) {
     // Use lean() result directly (already a plain object)
     const userObject = user;
 
-    // Log user data being returned for debugging
-    console.log('[User Controller] getMe - Returning user data:', {
-      userId: userObject._id,
-      addressLine1: userObject.addressLine1,
-      addressLine2: userObject.addressLine2,
-      area: userObject.area,
-      block: userObject.block,
-      landmark: userObject.landmark,
-      city: userObject.city,
-      state: userObject.state,
-      pincode: userObject.pincode
-    });
-
-    // Log the full user object being returned
-    console.log('[User Controller] getMe - Full user object:', JSON.stringify(userObject, null, 2));
-
     res.json({
       success: true,
       user: userObject

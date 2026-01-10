@@ -3,7 +3,8 @@ const {
   getAllAdminOrders,
   getAdminOrderById,
   updateOrderStatus,
-  reassignOrderToShop
+  reassignOrderToShop,
+  completeOrderAdmin
 } = require("./order.admin.controller")
 
 // Admin routes - no auth middleware needed if admin panel handles auth separately
@@ -13,6 +14,7 @@ router.get("/all", getAllAdminOrders)
 router.get("/:id", getAdminOrderById)
 router.put("/:id/status", updateOrderStatus)
 router.post("/:id/reassign-shop", reassignOrderToShop)
+router.post("/:id/complete", completeOrderAdmin)
 
 module.exports = router
 

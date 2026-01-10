@@ -3,8 +3,17 @@ const User = require("../user/user.model")
 const jwt = require("jsonwebtoken")
 
 async function firebaseLogin(idToken) {
+  if (!idToken) {
+    throw new Error("ID token is required")
+  }
+
   // 1️⃣ Verify Firebase token
-  const decoded = await admin.auth().verifyIdToken(idToken)
+  let decoded
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken)
+  } catch (error) {
+    throw new Error(`Token verification failed: ${error.message}`)
+  }
 
   const phone = decoded.phone_number
 

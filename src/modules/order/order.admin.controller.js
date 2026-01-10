@@ -56,7 +56,6 @@ async function getAllAdminOrders(req, res) {
       count: orders.length
     })
   } catch (err) {
-    console.error("Error fetching admin orders:", err)
     res.status(500).json({
       success: false,
       message: err.message
@@ -74,7 +73,7 @@ async function getAdminOrderById(req, res) {
     const order = await Order.findById(id)
       .populate({
         path: "userId",
-        select: "name phone email avatar fullName addressLine1 addressLine2 area block landmark city state pincode latitude longitude"
+        select: "name phone email avatar fullName"
       })
       .populate({
         path: "items.productId",
@@ -109,7 +108,6 @@ async function getAdminOrderById(req, res) {
       data: order
     })
   } catch (err) {
-    console.error("Error fetching admin order:", err)
     res.status(500).json({
       success: false,
       message: err.message
@@ -181,7 +179,6 @@ async function updateOrderStatus(req, res) {
       data: order
     })
   } catch (err) {
-    console.error("Error updating order status:", err)
     res.status(500).json({
       success: false,
       message: err.message
@@ -228,7 +225,75 @@ async function reassignOrderToShop(req, res) {
       data: order
     })
   } catch (err) {
-    console.error("Error reassigning order:", err)
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
+
+/**
+ * Complete order (admin only)
+ */
+async function completeOrderAdmin(req, res) {
+  try {
+    const { id } = req.params
+    
+    const order = await Order.findById(id)
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      })
+    }
+
+    // Check if order is already completed
+    if (order.orderStatus === "COMPLETED") {
+      return res.status(400).json({
+        success: false,
+        message: "Order is already completed"
+      })
+    }
+
+    // Check if order is cancelled
+    if (order.orderStatus === "CANCELLED") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot complete a cancelled order"
+      })
+    }
+
+    // Update order status to COMPLETED
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { 
+        orderStatus: "COMPLETED",
+        $push: {
+          statusHistory: {
+            status: "COMPLETED",
+            updatedAt: new Date()
+          }
+        }
+      },
+      { new: true }
+    )
+      .populate({
+        path: "userId",
+        select: "name phone email avatar"
+      })
+      .populate({
+        path: "items.productId",
+        select: "name slug images price brand vendorSlug"
+      })
+      .lean()
+    
+    res.json({
+      success: true,
+      message: "Order marked as completed successfully",
+      data: updatedOrder
+    })
+  } catch (err) {
     res.status(500).json({
       success: false,
       message: err.message
@@ -240,6 +305,7 @@ module.exports = {
   getAllAdminOrders,
   getAdminOrderById,
   updateOrderStatus,
-  reassignOrderToShop
+  reassignOrderToShop,
+  completeOrderAdmin
 }
 
