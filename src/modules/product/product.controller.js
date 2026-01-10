@@ -392,7 +392,7 @@ exports.getTrendingProducts = async (req, res) => {
       isTrending: true,
       isActive: true
     })
-      .sort({ dateAdded: -1, createdAt: -1 }) // Sort by newest first for recently added trending products
+      .sort({ reviews: -1, rating: -1 })
       .limit(Number(limit))
       .lean()
 
@@ -472,6 +472,7 @@ exports.createBulkProducts = async (req, res) => {
         const product = await createProductService(productData)
         createdProducts.push(product)
       } catch (err) {
+        console.error(`Error creating product ${productData.name}:`, err.message)
         // Continue with other products even if one fails
       }
     }
@@ -519,8 +520,8 @@ exports.updateProduct = async (req, res) => {
     // Update category counts if category changed
     if (updateData.category) {
       const { updateCategoryCounts } = require("../category/category.service")
-      updateCategoryCounts().catch(() => {
-        // Silently fail - counts will update on next sync
+      updateCategoryCounts().catch(err => {
+        console.error('Error updating category counts:', err.message)
       })
     }
     
@@ -552,8 +553,8 @@ exports.deleteProduct = async (req, res) => {
     
     // Update category counts
     const { updateCategoryCounts } = require("../category/category.service")
-    updateCategoryCounts().catch(() => {
-      // Silently fail - counts will update on next sync
+    updateCategoryCounts().catch(err => {
+      console.error('Error updating category counts after delete:', err.message)
     })
     
     res.json({

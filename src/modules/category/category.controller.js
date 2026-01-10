@@ -21,47 +21,22 @@ exports.getAllCategories = async (req, res) => {
         }
 
         // Get ALL categories - NO FILTERING, NO DUPLICATE HANDLING, NO LIMITS
-        // Use baseQuery (not empty object) to ensure consistency with regular endpoint
-        // Return EVERYTHING from database (both active and inactive)
-        // Use simple find() with allowDiskUse for large datasets (no explicit limit needed)
-        const allCategoriesRaw = await Category.find(baseQuery)
-          .sort({ name: 1 })
-          .allowDiskUse(true) // Allow using disk for sorting large datasets
-          .maxTimeMS(30000) // 30 second timeout
+        // Use empty query to get EVERYTHING from database (including inactive ones for frontend)
+        const categories = await Category.find({})
+          .select('name slug image productCount isActive subcategories majorCategory')
+          .sort({ name: 1 }) // Simple alphabetical sort
           .lean()
           
-        // Manually select only the fields needed for lightweight endpoint
-        // This ensures we get ALL categories regardless of field sizes
-        const categoriesArray = (allCategoriesRaw || []).map(cat => {
-          return {
-            name: cat.name,
-            slug: cat.slug,
-            image: cat.image || null, // Preserve image even if null - DO NOT filter out
-            productCount: cat.productCount || 0,
-            isActive: cat.isActive !== undefined ? cat.isActive : true,
-            majorCategory: cat.majorCategory || 'ALL'
-          }
-        })
+        // Ensure we always return an array, never null
+        const categoriesArray = Array.isArray(categories) ? categories : []
         
-        // Final verification before sending response
-        const responseData = {
+        return res.json({
           success: true,
           data: categoriesArray,
-          count: categoriesArray.length,
-          breakdown: {
-            total: categoriesArray.length,
-            withImages: categoriesArray.filter(c => c.image).length,
-            withoutImages: categoriesArray.filter(c => !c.image).length
-          }
-        }
-        
-        // Set explicit headers to ensure proper response
-        const jsonString = JSON.stringify(responseData)
-        res.setHeader('Content-Type', 'application/json; charset=utf-8')
-        res.setHeader('Content-Length', Buffer.byteLength(jsonString, 'utf8'))
-        
-        return res.json(responseData)
+          count: categoriesArray.length
+        })
       } catch (err) {
+        console.error('Error in lightweight categories endpoint:', err)
         return res.status(500).json({
           success: false,
           message: err.message || 'Failed to fetch categories',
@@ -126,34 +101,7 @@ exports.getCategoryBySlug = async (req, res) => {
   try {
     const { slug } = req.params
     const { lightweight } = req.query
-    
-    // Try to get category with slug variations
-    let category = await getCategoryBySlug(slug)
-
-    // If not found, try variations
-    if (!category) {
-      const Category = require("./category.model")
-      // Try with/without apostrophe
-      const variations = [
-        slug,
-        slug.replace(/-/g, "'s-"), // "mens-wear" -> "men's-wear"
-        slug.replace(/'/g, "-"),    // "men's-wear" -> "mens-wear"
-        slug.replace(/'s-/g, "-"),  // "men's-wear" -> "men-wear"
-        slug.toLowerCase(),
-        slug.replace(/-/g, ' '),
-        slug.replace(/\s+/g, '-')
-      ]
-      
-      for (const variation of variations) {
-        if (variation && variation !== slug) {
-          category = await Category.findOne({ 
-            slug: variation, 
-            isActive: true 
-          }).lean()
-          if (category) break
-        }
-      }
-    }
+    const category = await getCategoryBySlug(slug)
 
     if (!category) {
       return res.status(404).json({
@@ -297,12 +245,15 @@ exports.updateCategory = async (req, res) => {
     await category.save()
     await updateCategoryCounts()
 
+    console.log(`Category updated: ${category.name} (${category.slug}), isActive: ${category.isActive}`)
+
     res.json({
       success: true,
       message: "Category updated successfully",
       data: category
     })
   } catch (err) {
+    console.error('Error updating category:', err)
     res.status(500).json({
       success: false,
       message: err.message
@@ -339,8 +290,12 @@ exports.deleteCategory = async (req, res) => {
       })
     }
 
+    console.log(`Deleting category: ${category.name} (${category.slug})`)
+
     // Save subcategories as free subcategories before deleting
     if (category.subcategories && category.subcategories.length > 0) {
+      console.log(`Moving ${category.subcategories.length} subcategories to free subcategories`)
+      
       for (const subcat of category.subcategories) {
         // Check if free subcategory already exists
         const existingFree = await FreeSubcategory.findOne({ 
@@ -359,6 +314,9 @@ exports.deleteCategory = async (req, res) => {
             createdAt: subcat.createdAt || new Date(),
             isActive: subcat.isActive !== false
           })
+          console.log(`Created free subcategory: ${subcat.name}`)
+        } else {
+          console.log(`Free subcategory already exists: ${subcat.name}`)
         }
       }
     }
@@ -373,6 +331,8 @@ exports.deleteCategory = async (req, res) => {
       })
     }
 
+    console.log(`Category deleted successfully: ${category.name}`)
+
     await updateCategoryCounts()
 
     res.json({
@@ -381,6 +341,7 @@ exports.deleteCategory = async (req, res) => {
       deletedCount: deleteResult.deletedCount
     })
   } catch (err) {
+    console.error('Error deleting category:', err)
     res.status(500).json({
       success: false,
       message: err.message
@@ -556,10 +517,12 @@ exports.updateCounts = async (req, res) => {
         if (subcategoriesToAdd.length > 0) {
           nonImageCategory.subcategories.push(...subcategoriesToAdd)
           await nonImageCategory.save()
+          console.log(`Merged ${subcategoriesToAdd.length} subcategories from mens-wear image category`)
         }
         
         // Delete the image category permanently
         await Category.deleteOne({ _id: imageCategory._id })
+        console.log(`Deleted duplicate mens-wear category with image`)
       }
       
       // Ensure mens-jackets subcategory exists
@@ -575,6 +538,7 @@ exports.updateCounts = async (req, res) => {
           isActive: true
         })
         await nonImageCategory.save()
+        console.log(`Added Jackets subcategory to mens-wear category (slug: ${nonImageCategory.slug})`)
       }
     }
     
@@ -598,10 +562,12 @@ exports.updateCounts = async (req, res) => {
         if (subcategoriesToAdd.length > 0) {
           nonImageCategory.subcategories.push(...subcategoriesToAdd)
           await nonImageCategory.save()
+          console.log(`Merged ${subcategoriesToAdd.length} subcategories from womens-wear image category`)
         }
         
         // Delete the image category permanently
         await Category.deleteOne({ _id: imageCategory._id })
+        console.log(`Deleted duplicate womens-wear category with image`)
       }
     }
     

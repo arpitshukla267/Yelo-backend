@@ -34,11 +34,6 @@ async function getProductsByShop({
     isActive: true
   }
 
-  // For trending shop, also filter by isTrending field
-  if (shopSlug === 'trending') {
-    query.isTrending = true
-  }
-
   // PRICE FILTER
   if (filters.minPrice || filters.maxPrice) {
     query.price = {}

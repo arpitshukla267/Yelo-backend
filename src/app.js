@@ -19,6 +19,7 @@ const allowedOrigins = [
   "http://yeloindia.com",
   // Vercel deployments
   "https://yelo-wheat.vercel.app",
+  "https://yelo-admin-rose.vercel.app",
   // Add any other Vercel preview URLs if needed
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
 ]
