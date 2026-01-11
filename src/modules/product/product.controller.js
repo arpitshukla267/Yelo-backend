@@ -425,7 +425,8 @@ exports.createProduct = async (req, res) => {
 
     // Auto-create category if it doesn't exist
     if (req.body.category) {
-      const majorCategory = req.body.price <= 1500 ? "AFFORDABLE" : "LUXURY"
+      // Assign majorCategory based on brand presence: if brand exists, it's LUXURY, otherwise AFFORDABLE
+      const majorCategory = (req.body.brand && req.body.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
       await ensureCategory(req.body.category, req.body.productType, majorCategory)
     }
 
@@ -464,7 +465,8 @@ exports.createBulkProducts = async (req, res) => {
 
         // Auto-create category if it doesn't exist
         if (productData.category) {
-          const majorCategory = productData.price <= 1500 ? "AFFORDABLE" : "LUXURY"
+          // Assign majorCategory based on brand presence: if brand exists, it's LUXURY, otherwise AFFORDABLE
+          const majorCategory = (productData.brand && productData.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
           await ensureCategory(productData.category, productData.productType, majorCategory)
         }
 

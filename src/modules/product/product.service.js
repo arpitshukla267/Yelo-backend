@@ -6,8 +6,9 @@ const SORT_MAP = require("./product.sort")
 // CREATE PRODUCT
 // =======================
 async function createProduct(payload) {
+  // Assign majorCategory based on brand presence: if brand exists, it's LUXURY, otherwise AFFORDABLE
   payload.majorCategory =
-    payload.price <= 1500 ? "AFFORDABLE" : "LUXURY"
+    (payload.brand && payload.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
 
   const product = await Product.create(payload)
 

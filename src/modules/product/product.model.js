@@ -200,7 +200,8 @@ productSchema.pre("validate", function () {
     throw new Error('slug is required. Provide either slug or both baseSlug and vendorSlug fields.')
   }
 
-  this.majorCategory = this.price <= 1500 ? "AFFORDABLE" : "LUXURY"
+  // Assign majorCategory based on brand presence: if brand exists, it's LUXURY, otherwise AFFORDABLE
+  this.majorCategory = (this.brand && this.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
   
   // Auto-populate subcategory from productType if not set
   if (this.productType && !this.subcategory) {
