@@ -9,10 +9,13 @@ const allowedOrigins = [
   // Localhost variations for development
   "http://localhost:3000",
   "http://localhost:3001",
+  "http://localhost:5173",
   "http://127.0.0.1:3000",
   "http://127.0.0.1:3001",
+  "http://127.0.0.1:5173",
   "http://[::1]:3000",
   "http://[::1]:3001",
+  "http://[::1]:5173",
   // Production domains
   "https://www.yeloindia.com",
   "https://yeloindia.com",
@@ -35,12 +38,10 @@ app.use(
         return callback(null, true)
       }
       
-      // For development: allow any localhost origin (flexible for different ports)
-      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)
-        if (isLocalhost) {
-          return callback(null, true)
-        }
+      // Always allow localhost origins (for development and testing)
+      const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)
+      if (isLocalhost) {
+        return callback(null, true)
       }
       
       // Reject if not allowed
@@ -48,7 +49,9 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires"]
+    allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-Requested-With"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 )
 
