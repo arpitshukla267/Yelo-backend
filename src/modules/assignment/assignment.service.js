@@ -4,18 +4,21 @@ const matchesShopCriteria = require("./criteriaMatcher")
 
 async function assignProductToShops(product) {
   // Ensure product has majorCategory set (fallback to AFFORDABLE if not set)
-  if (!product.majorCategory) {
-    product.majorCategory = (product.brand && product.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
+  let majorCategory = product.majorCategory
+  if (!majorCategory) {
+    majorCategory = (product.brand && product.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
     // Update the product in the database
     await Product.updateOne(
       { _id: product._id },
-      { majorCategory: product.majorCategory }
+      { majorCategory: majorCategory }
     )
+    // Also update the product object so it's available for criteria matching
+    product.majorCategory = majorCategory
   }
 
   // Get all shops - products can match shops with matching majorCategory
   const shops = await Shop.find({
-    majorCategory: product.majorCategory
+    majorCategory: product.majorCategory || majorCategory
   })
 
   const matchedShopSlugs = []
