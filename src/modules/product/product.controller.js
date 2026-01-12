@@ -21,15 +21,45 @@ exports.getAllProducts = async (req, res) => {
 
     const query = { isActive: isActive !== 'false' }
 
-    // Search filter - search in name, brand, category
+    // Search filter - fuzzy search in name, brand, category
     if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i')
+      const searchTerm = search.trim()
+      
+      // Normalize search term: remove hyphens, normalize spaces, handle common variations
+      const normalizedSearch = searchTerm
+        .replace(/[-_]/g, ' ')  // Replace hyphens and underscores with spaces
+        .replace(/\s+/g, ' ')    // Normalize multiple spaces to single space
+        .trim()
+      
+      // Create a flexible regex pattern that matches:
+      // - With or without spaces (sweatshirt, sweat shirt)
+      // - With or without hyphens (sweat-shirt, sweat shirt)
+      // - Word parts in any order (sweat shirt matches "sweatshirt")
+      const words = normalizedSearch.split(/\s+/).filter(w => w.length > 0)
+      
+      // Pattern: match all words with optional spaces/hyphens/underscores between them
+      // This handles: "sweatshirt", "sweat shirt", "sweat-shirt", "sweat_shirt", etc.
+      const fuzzyPattern = words.length > 1
+        ? new RegExp(words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[-_\\s]*'), 'i')
+        : new RegExp(normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      
+      // Also create pattern without spaces (for matching compound words)
+      const noSpacePattern = new RegExp(normalizedSearch.replace(/\s+/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      
+      // Build $or query with both patterns
       query.$or = [
-        { name: searchRegex },
-        { brand: searchRegex },
-        { category: searchRegex },
-        { productType: searchRegex },
-        { description: searchRegex }
+        { name: fuzzyPattern },
+        { name: noSpacePattern },
+        { brand: fuzzyPattern },
+        { brand: noSpacePattern },
+        { category: fuzzyPattern },
+        { category: noSpacePattern },
+        { productType: fuzzyPattern },
+        { productType: noSpacePattern },
+        { subcategory: fuzzyPattern },
+        { subcategory: noSpacePattern },
+        { description: fuzzyPattern },
+        { description: noSpacePattern }
       ]
     }
 

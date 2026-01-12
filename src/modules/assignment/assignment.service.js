@@ -52,12 +52,20 @@ async function reassignSingleProduct(productId) {
 
 // Reassign all products to shops (useful when shop criteria changes)
 async function reassignAllProducts() {
-  const products = await Product.find({ isActive: true })
+  // Use lean() to get plain objects, but we need to convert back for assignment
+  const products = await Product.find({ isActive: true }).lean()
   let reassignedCount = 0
   let errorCount = 0
   
-  for (const product of products) {
+  for (const productData of products) {
     try {
+      // Convert plain object back to Mongoose document for assignment
+      const product = await Product.findById(productData._id)
+      if (!product) {
+        console.error(`Product ${productData._id} not found`)
+        continue
+      }
+      
       // Ensure majorCategory is set before assignment
       if (!product.majorCategory) {
         product.majorCategory = (product.brand && product.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
@@ -71,7 +79,8 @@ async function reassignAllProducts() {
       reassignedCount++
     } catch (error) {
       errorCount++
-      console.error(`Error reassigning product ${product._id} (${product.name}):`, error.message)
+      console.error(`Error reassigning product ${productData._id} (${productData.name}):`, error.message)
+      console.error(error.stack)
     }
   }
   
