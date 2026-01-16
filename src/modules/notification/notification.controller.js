@@ -167,19 +167,28 @@ async function getRelatedProducts(req, res) {
       })
     }
 
-    // Build query
+    // Build query - optimize to avoid complex query planner
     const query = {
       isActive: true,
       createdAt: { $gte: dateThreshold },
-      _id: { $nin: Array.from(allInteractedProductIds) }, // Exclude products user already has
       $or: matchConditions // Match at least one condition
     }
 
-    // Find related products
-    const relatedProducts = await Product.find(query, null, { allowDiskUse: true })
+    // Find related products with allowDiskUse for large sorts
+    let relatedProducts = await Product.find(query, null, { allowDiskUse: true })
       .sort({ createdAt: -1 }) // Newest first
-      .limit(parseInt(limit))
+      .limit(parseInt(limit) * 2) // Get more initially to filter out excluded ones
       .lean()
+    
+    // Filter out products user already has (client-side filtering to avoid complex $nin)
+    if (allInteractedProductIds.size > 0) {
+      relatedProducts = relatedProducts.filter(
+        product => !allInteractedProductIds.has(product._id.toString())
+      )
+    }
+    
+    // Limit to requested amount after filtering
+    relatedProducts = relatedProducts.slice(0, parseInt(limit))
 
     // Format products as notifications
     const notifications = relatedProducts.map(product => {
