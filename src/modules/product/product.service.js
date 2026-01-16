@@ -64,9 +64,8 @@ async function getProductsByShop({
   const skip = (Number(page) - 1) * Number(limit)
   const total = await Product.countDocuments(query)
 
-  const products = await Product.find(query)
+  const products = await Product.find(query, null, { allowDiskUse: true })
     .sort(sortQuery)
-    .allowDiskUse(true)
     .skip(skip)
     .limit(Number(limit))
     .lean()

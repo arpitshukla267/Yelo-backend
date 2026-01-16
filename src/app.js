@@ -16,6 +16,7 @@ const allowedOrigins = [
   "http://[::1]:3000",
   "http://[::1]:3001",
   "http://[::1]:5173",
+
   // Production domains
   "https://www.yeloindia.com",
   "https://yeloindia.com",
@@ -49,11 +50,26 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type", 
+      "Authorization", 
+      "Cache-Control", 
+      "Pragma", 
+      "Expires", 
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+      "Access-Control-Request-Method",
+      "Access-Control-Request-Headers"
+    ],
+    exposedHeaders: ["Content-Range", "X-Content-Range"],
     preflightContinue: false,
     optionsSuccessStatus: 204
   })
 )
+
+// Explicitly handle OPTIONS requests (preflight) for all routes
+app.options('*', cors())
 
 // Increase body parser limit for image uploads (50MB)
 app.use(express.json({ limit: '50mb' }))

@@ -89,9 +89,8 @@ exports.getAllProducts = async (req, res) => {
 
     const skip = (Number(page) - 1) * Number(limit)
 
-    const products = await Product.find(query)
+    const products = await Product.find(query, null, { allowDiskUse: true })
       .sort(sortQuery)
-      .allowDiskUse(true)
       .skip(skip)
       .limit(Number(limit))
       .lean()
@@ -204,9 +203,8 @@ exports.getProductsByVendor = async (req, res) => {
     const sortQuery = sortOptions[sort] || sortOptions.popular
     const skip = (Number(page) - 1) * Number(limit)
 
-    const products = await Product.find(query)
+    const products = await Product.find(query, null, { allowDiskUse: true })
       .sort(sortQuery)
-      .allowDiskUse(true)
       .skip(skip)
       .limit(Number(limit))
       .lean()
@@ -377,9 +375,8 @@ exports.getProductsByCategory = async (req, res) => {
     const sortQuery = sortOptions[sort] || sortOptions.popular
     const skip = (Number(page) - 1) * Number(limit)
 
-    const products = await Product.find(query)
+    const products = await Product.find(query, null, { allowDiskUse: true })
       .sort(sortQuery)
-      .allowDiskUse(true)
       .skip(skip)
       .limit(Number(limit))
       .lean()
@@ -424,9 +421,8 @@ exports.getTrendingProducts = async (req, res) => {
     const products = await Product.find({
       isTrending: true,
       isActive: true
-    })
+    }, null, { allowDiskUse: true })
       .sort({ reviews: -1, rating: -1 })
-      .allowDiskUse(true)
       .limit(Number(limit))
       .lean()
 
