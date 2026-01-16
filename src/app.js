@@ -68,9 +68,6 @@ app.use(
   })
 )
 
-// Explicitly handle OPTIONS requests (preflight) for all routes
-app.options('*', cors())
-
 // Increase body parser limit for image uploads (50MB)
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
