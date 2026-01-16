@@ -66,6 +66,7 @@ async function getProductsByShop({
 
   const products = await Product.find(query)
     .sort(sortQuery)
+    .allowDiskUse(true)
     .skip(skip)
     .limit(Number(limit))
     .lean()
