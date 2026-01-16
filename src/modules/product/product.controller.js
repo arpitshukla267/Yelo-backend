@@ -309,23 +309,33 @@ exports.getProductsByCategory = async (req, res) => {
 
     const query = { isActive: true }
     
-    // Build category match conditions
+    // Build category match conditions - handle slug to name conversion
     if (categorySlug) {
       const categoryConditions = [
         { category: categorySlug },
         { category: { $regex: new RegExp(`^${categorySlug}$`, 'i') } }
       ]
       
-      // Also match by category name variations
-      const categoryName = categorySlug.replace(/-/g, ' ')
+      // Convert slug to name variations (e.g., "women's-wear" -> "Women's Wear", "womens-wear" -> "Women's Wear")
+      const categoryNameFromSlug = categorySlug
+        .replace(/-/g, ' ')  // Replace hyphens with spaces
+        .replace(/\b\w/g, l => l.toUpperCase())  // Capitalize first letter of each word
+        .replace(/Womens/g, "Women's")  // Handle "womens" -> "Women's"
+        .replace(/Mens/g, "Men's")  // Handle "mens" -> "Men's"
+      
       categoryConditions.push(
-        { category: { $regex: new RegExp(`^${categoryName}$`, 'i') } }
+        { category: { $regex: new RegExp(`^${categoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
+      )
+      
+      // Also try direct name matching with various formats
+      categoryConditions.push(
+        { category: { $regex: new RegExp(categorySlug.replace(/[-_]/g, '[\\s_-]*'), 'i') } }
       )
       
       query.$or = categoryConditions
     }
     
-    // Add subcategory filter
+    // Add subcategory filter - handle slug to name conversion and partial matching
     if (subcategorySlug) {
       const subcategoryConditions = [
         { subcategory: subcategorySlug },
@@ -334,11 +344,29 @@ exports.getProductsByCategory = async (req, res) => {
         { productType: { $regex: new RegExp(`^${subcategorySlug}$`, 'i') } }
       ]
       
-      const subcategoryName = subcategorySlug.replace(/-/g, ' ')
+      // Convert slug to name (e.g., "womens-jackets" -> "Jackets & Coats" or "Jackets")
+      const subcategoryNameFromSlug = subcategorySlug
+        .replace(/-/g, ' ')  // Replace hyphens with spaces
+        .replace(/\b\w/g, l => l.toUpperCase())  // Capitalize first letter of each word
+        .replace(/Womens |Mens |Women S |Men S /g, '')  // Remove "Womens " or "Mens " prefix
+      
+      // Try exact name match
       subcategoryConditions.push(
-        { subcategory: { $regex: new RegExp(`^${subcategoryName}$`, 'i') } },
-        { productType: { $regex: new RegExp(`^${subcategoryName}$`, 'i') } }
+        { subcategory: { $regex: new RegExp(`^${subcategoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+        { productType: { $regex: new RegExp(`^${subcategoryNameFromSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }
       )
+      
+      // Try partial matching (e.g., "jackets" matches "Jackets & Coats")
+      const subcategoryWords = subcategoryNameFromSlug.split(/\s+/).filter(w => w.length > 2)
+      if (subcategoryWords.length > 0) {
+        // Match if subcategory contains any of the words
+        subcategoryWords.forEach(word => {
+          subcategoryConditions.push(
+            { subcategory: { $regex: new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') } },
+            { productType: { $regex: new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') } }
+          )
+        })
+      }
       
       // Combine with category conditions if they exist
       if (query.$or) {
