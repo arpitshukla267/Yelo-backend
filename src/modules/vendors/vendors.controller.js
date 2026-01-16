@@ -1,8 +1,41 @@
 const Vendor = require("./vendors.model")
 const Product = require("../product/product.model")
 
+// Helper function to generate slug from name
+function generateSlug(name) {
+  if (!name) return ''
+  
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')  // Replace spaces with hyphens
+    .replace(/[^a-z0-9-]/g, '')  // Remove special characters except hyphens
+    .replace(/-+/g, '-')  // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, '')  // Remove leading/trailing hyphens
+}
+
 exports.createVendor = async (req, res) => {
   try {
+    // Auto-generate slug from name if not provided
+    if (!req.body.slug && req.body.name) {
+      let baseSlug = generateSlug(req.body.name)
+      let slug = baseSlug
+      let counter = 1
+      
+      // Ensure slug uniqueness
+      while (await Vendor.findOne({ slug })) {
+        slug = `${baseSlug}-${counter}`
+        counter++
+      }
+      
+      req.body.slug = slug
+    }
+    
+    // If slug is provided, ensure it's in the correct format
+    if (req.body.slug) {
+      req.body.slug = generateSlug(req.body.slug)
+    }
+    
     const vendor = await Vendor.create(req.body)
     res.status(201).json({ success: true, data: vendor })
   } catch (err) {
