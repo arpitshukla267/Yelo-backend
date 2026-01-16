@@ -30,11 +30,15 @@ function matchesShopCriteria(product, criteria) {
       if (!hasDiscount) return false
     }
   
-    // Time-based (skip if dateAdded missing)
-    if (criteria.daysSinceAdded && product.dateAdded) {
-      const days =
-        (Date.now() - new Date(product.dateAdded)) / (1000 * 60 * 60 * 24)
-      if (days > criteria.daysSinceAdded) return false
+    // Time-based (check both dateAdded and createdAt)
+    if (criteria.daysSinceAdded) {
+      const productDate = product.dateAdded || product.createdAt
+      if (productDate) {
+        const days =
+          (Date.now() - new Date(productDate)) / (1000 * 60 * 60 * 24)
+        if (days > criteria.daysSinceAdded) return false
+      }
+      // If no date field exists, skip the time check (allow product)
     }
   
     // Category match - improved to handle variations (including singular/plural)

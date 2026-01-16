@@ -2,11 +2,11 @@ const Order = require("./order.model")
 const User = require("../user/user.model")
 
 /**
- * Get all orders for admin with full details
+ * Get all orders for admin with full details (paginated)
  */
 async function getAllAdminOrders(req, res) {
   try {
-    const { status } = req.query
+    const { status, page = 1, limit = 10 } = req.query
     
     // Build query
     const query = {}
@@ -14,7 +14,15 @@ async function getAllAdminOrders(req, res) {
       query.orderStatus = status.toUpperCase()
     }
     
-    // Fetch orders with full population
+    // Parse and validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page) || 1)
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10)) // Max 100 per page
+    const skip = (pageNum - 1) * limitNum
+    
+    // Get total count for pagination info
+    const totalOrders = await Order.countDocuments(query)
+    
+    // Fetch orders with pagination and full population
     const orders = await Order.find(query)
       .populate({
         path: "userId",
@@ -25,6 +33,8 @@ async function getAllAdminOrders(req, res) {
         select: "name slug images price brand vendorSlug sizes colors description"
       })
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
       .lean()
     
     // Manually populate vendor information from vendorSlug
@@ -53,7 +63,11 @@ async function getAllAdminOrders(req, res) {
     res.json({
       success: true,
       data: orders,
-      count: orders.length
+      count: orders.length,
+      total: totalOrders,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(totalOrders / limitNum)
     })
   } catch (err) {
     res.status(500).json({

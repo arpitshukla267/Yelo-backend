@@ -17,7 +17,7 @@ async function getRelatedProducts(req, res) {
     dateThreshold.setDate(dateThreshold.getDate() - parseInt(days))
 
     // 1. Get user's purchased products (from orders)
-    const orders = await Order.find({ userId })
+    const orders = await Order.find({ userId }, null, { allowDiskUse: true })
       .populate("items.productId", "category brand subcategory productType assignedShops majorCategory")
       .lean()
 
@@ -176,7 +176,7 @@ async function getRelatedProducts(req, res) {
     }
 
     // Find related products
-    const relatedProducts = await Product.find(query)
+    const relatedProducts = await Product.find(query, null, { allowDiskUse: true })
       .sort({ createdAt: -1 }) // Newest first
       .limit(parseInt(limit))
       .lean()
