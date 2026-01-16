@@ -18,7 +18,7 @@ async function getAllAdminOrders(req, res) {
     const orders = await Order.find(query)
       .populate({
         path: "userId",
-        select: "name phone email avatar"
+        select: "name phone email avatar fullName"
       })
       .populate({
         path: "items.productId",
@@ -39,7 +39,7 @@ async function getAllAdminOrders(req, res) {
             item.productId.vendorId = vendorCache.get(item.productId.vendorSlug)
           } else {
             const vendor = await Vendor.findOne({ slug: item.productId.vendorSlug })
-              .select("name slug email phone")
+              .select("name slug email phone address")
               .lean()
             if (vendor) {
               vendorCache.set(item.productId.vendorSlug, vendor)
@@ -87,7 +87,7 @@ async function getAdminOrderById(req, res) {
       for (const item of order.items) {
         if (item.productId && item.productId.vendorSlug) {
           const vendor = await Vendor.findOne({ slug: item.productId.vendorSlug })
-            .select("name slug email phone")
+            .select("name slug email phone address")
             .lean()
           if (vendor) {
             item.productId.vendorId = vendor
@@ -153,16 +153,11 @@ async function updateOrderStatus(req, res) {
     )
       .populate({
         path: "userId",
-        select: "name phone email"
+        select: "name phone email avatar fullName"
       })
       .populate({
         path: "items.productId",
-        select: "name slug images price brand vendorSlug",
-        populate: {
-          path: "vendorId",
-          select: "name slug",
-          model: "Vendor"
-        }
+        select: "name slug images price brand vendorSlug sizes colors description"
       })
       .lean()
     
@@ -171,6 +166,26 @@ async function updateOrderStatus(req, res) {
         success: false,
         message: "Order not found"
       })
+    }
+    
+    // Manually populate vendor information from vendorSlug (same as getAllAdminOrders)
+    const Vendor = require("../vendors/vendors.model")
+    const vendorCache = new Map()
+    
+    for (const item of order.items || []) {
+      if (item.productId && item.productId.vendorSlug) {
+        if (vendorCache.has(item.productId.vendorSlug)) {
+          item.productId.vendorId = vendorCache.get(item.productId.vendorSlug)
+        } else {
+          const vendor = await Vendor.findOne({ slug: item.productId.vendorSlug })
+            .select("name slug email phone address")
+            .lean()
+          if (vendor) {
+            vendorCache.set(item.productId.vendorSlug, vendor)
+            item.productId.vendorId = vendor
+          }
+        }
+      }
     }
     
     res.json({
@@ -280,13 +295,33 @@ async function completeOrderAdmin(req, res) {
     )
       .populate({
         path: "userId",
-        select: "name phone email avatar"
+        select: "name phone email avatar fullName"
       })
       .populate({
         path: "items.productId",
-        select: "name slug images price brand vendorSlug"
+        select: "name slug images price brand vendorSlug sizes colors description"
       })
       .lean()
+    
+    // Manually populate vendor information from vendorSlug
+    const Vendor = require("../vendors/vendors.model")
+    const vendorCache = new Map()
+    
+    for (const item of updatedOrder.items || []) {
+      if (item.productId && item.productId.vendorSlug) {
+        if (vendorCache.has(item.productId.vendorSlug)) {
+          item.productId.vendorId = vendorCache.get(item.productId.vendorSlug)
+        } else {
+          const vendor = await Vendor.findOne({ slug: item.productId.vendorSlug })
+            .select("name slug email phone address")
+            .lean()
+          if (vendor) {
+            vendorCache.set(item.productId.vendorSlug, vendor)
+            item.productId.vendorId = vendor
+          }
+        }
+      }
+    }
     
     res.json({
       success: true,
