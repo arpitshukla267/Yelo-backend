@@ -1,10 +1,12 @@
 const express = require("express")
 const router = express.Router()
 const controller = require("./product.controller")
+const searchController = require("./product.search.controller")
 
 // Admin routes for product management (MUST be before regex route)
 const adminController = require("./product.admin.controller")
 router.get("/admin/debug", adminController.getProductDebugData)
+router.get("/admin/check-indexes", adminController.checkIndexes)
 router.post("/admin/delete-all", adminController.deleteAllProducts)
 router.post("/admin/delete-by-criteria", adminController.deleteProductsByCriteria)
 router.post("/admin/reassign-and-sync", adminController.reassignAndSyncProducts)
@@ -23,6 +25,9 @@ router.post("/", controller.createProduct)
 router.post("/bulk", controller.createBulkProducts)
 
 // GET routes (public)
+router.get("/count", controller.getProductCount) // Health check endpoint
+router.get("/search/suggestions", searchController.getSearchSuggestions) // Search suggestions (top 5 products)
+router.get("/search/comprehensive", searchController.comprehensiveSearch) // Comprehensive search (products, categories, subcategories)
 router.get("/", controller.getAllProducts)
 router.get("/trending", controller.getTrendingProducts)
 router.get("/category", controller.getProductsByCategory)

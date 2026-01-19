@@ -12,7 +12,16 @@ const startServer = async () => {
     await connectDB()
     console.log("MongoDB connected")
 
-    // 2️⃣ OPTIONAL: seed shops (only if SEED_SHOPS env var is set)
+    // 2️⃣ Ensure Product indexes are created (non-blocking)
+    try {
+      const { ensureProductIndexes } = require("./modules/product/ensure-indexes")
+      await ensureProductIndexes()
+    } catch (indexError) {
+      console.warn("⚠️ Index creation warning (non-critical):", indexError.message)
+      // Don't crash the server if index creation fails - they'll be created on first use
+    }
+
+    // 3️⃣ OPTIONAL: seed shops (only if SEED_SHOPS env var is set)
     if (process.env.SEED_SHOPS === "true") {
       try {
         const seedShops = require("./modules/shop/shop.seed")
@@ -24,7 +33,7 @@ const startServer = async () => {
       }
     }
 
-    // 3️⃣ Start server AFTER DB is ready
+    // 4️⃣ Start server AFTER DB is ready
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`)
     })

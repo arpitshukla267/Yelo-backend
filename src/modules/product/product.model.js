@@ -169,6 +169,167 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+// ========================================
+// COMPOUND INDEXES FOR OPTIMAL QUERY PERFORMANCE
+// Following ESR Rule: Equality → Sort → Range
+// These indexes prevent "Sort exceeded memory limit" errors
+// ========================================
+
+// Category-based indexes (most common queries)
+productSchema.index({ category: 1, isActive: 1, price: 1 }, { 
+  name: 'category_isActive_price',
+  background: true 
+})
+
+productSchema.index({ category: 1, isActive: 1, createdAt: -1 }, { 
+  name: 'category_isActive_createdAt',
+  background: true 
+})
+
+productSchema.index({ category: 1, isActive: 1, rating: -1 }, { 
+  name: 'category_isActive_rating',
+  background: true 
+})
+
+productSchema.index({ category: 1, isActive: 1, reviews: -1, rating: -1 }, { 
+  name: 'category_isActive_popular',
+  background: true 
+})
+
+// Brand-based indexes (sparse - brand can be null/undefined)
+productSchema.index({ brand: 1, isActive: 1, price: 1 }, { 
+  name: 'brand_isActive_price',
+  background: true,
+  sparse: true 
+})
+
+productSchema.index({ brand: 1, isActive: 1, createdAt: -1 }, { 
+  name: 'brand_isActive_createdAt',
+  background: true,
+  sparse: true 
+})
+
+productSchema.index({ brand: 1, isActive: 1, rating: -1 }, { 
+  name: 'brand_isActive_rating',
+  background: true,
+  sparse: true 
+})
+
+// Category + Brand combined indexes
+productSchema.index({ category: 1, brand: 1, isActive: 1, price: 1 }, { 
+  name: 'category_brand_isActive_price',
+  background: true,
+  sparse: true 
+})
+
+// Global indexes (for queries without category/brand filter)
+productSchema.index({ isActive: 1, price: 1 }, { 
+  name: 'isActive_price',
+  background: true 
+})
+
+productSchema.index({ isActive: 1, createdAt: -1 }, { 
+  name: 'isActive_createdAt',
+  background: true 
+})
+
+productSchema.index({ isActive: 1, rating: -1 }, { 
+  name: 'isActive_rating',
+  background: true 
+})
+
+// Trending/Popular products
+productSchema.index({ isTrending: 1, isActive: 1, reviews: -1, rating: -1 }, { 
+  name: 'isTrending_isActive_popular',
+  background: true 
+})
+
+// Subcategory indexes (for category/subcategory pages)
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, price: 1 }, { 
+  name: 'category_subcategory_isActive_price_low',
+  background: true 
+})
+
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, price: -1 }, { 
+  name: 'category_subcategory_isActive_price_high',
+  background: true 
+})
+
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, createdAt: -1 }, { 
+  name: 'category_subcategory_isActive_createdAt',
+  background: true 
+})
+
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, rating: -1 }, { 
+  name: 'category_subcategory_isActive_rating',
+  background: true 
+})
+
+productSchema.index({ category: 1, subcategory: 1, isActive: 1, reviews: -1, rating: -1 }, { 
+  name: 'category_subcategory_isActive_popular',
+  background: true 
+})
+
+productSchema.index({ assignedShops: 1, isActive: 1, price: 1 }, { 
+  name: 'assignedShops_isActive_price',
+  background: true 
+})
+
+productSchema.index({ assignedShops: 1, isActive: 1, createdAt: -1 }, { 
+  name: 'assignedShops_isActive_createdAt',
+  background: true 
+})
+
+productSchema.index({ assignedShops: 1, isActive: 1, rating: -1 }, { 
+  name: 'assignedShops_isActive_rating',
+  background: true 
+})
+
+// AssignedShops + Popular Sorting (for shop pages - reviews + rating)
+productSchema.index({ assignedShops: 1, isActive: 1, reviews: -1, rating: -1 }, { 
+  name: 'assignedShops_isActive_popular',
+  background: true 
+})
+
+// Discount-based compound indexes for offers queries
+// Following ESR rule: Equality (isActive) → Sort/Range (discount/price)
+
+// Index for products with discount field: helps with filtering discount > 10 and sorting
+productSchema.index({ isActive: 1, discount: -1 }, { 
+  name: 'isActive_discount_desc',
+  background: true 
+})
+
+// Partial index for offers: only indexes active products with discount > 10 (very efficient for offers queries)
+productSchema.index({ isActive: 1, discount: -1 }, { 
+  name: 'isActive_discount_gt_10_partial',
+  background: true,
+  partialFilterExpression: { 
+    isActive: true,
+    discount: { $gt: 10 }
+  }
+})
+
+// Index for products using originalPrice/price calculation: helps with filtering and sorting
+// originalPrice: -1 helps with sorting by calculated discount (higher originalPrice = higher discount potential)
+productSchema.index({ isActive: 1, originalPrice: -1, price: 1 }, { 
+  name: 'isActive_originalPrice_desc_price_asc',
+  background: true 
+})
+
+// Index for price-based filtering with discount calculation
+productSchema.index({ isActive: 1, price: 1, originalPrice: -1 }, { 
+  name: 'isActive_price_asc_originalPrice_desc',
+  background: true 
+})
+
+// Index for brand filtering in offers (when brand filter is applied)
+productSchema.index({ isActive: 1, brand: 1, discount: -1 }, { 
+  name: 'isActive_brand_discount_desc',
+  background: true,
+  sparse: true 
+})
+
 /**
  * Auto-generate:
  * 1. final slug = baseSlug + vendorSlug (for backward compatibility)

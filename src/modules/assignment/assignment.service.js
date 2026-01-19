@@ -2,6 +2,92 @@ const Shop = require("../shop/shop.model")
 const Product = require("../product/product.model")
 const matchesShopCriteria = require("./criteriaMatcher")
 
+/**
+ * Generate a slug from category name
+ * Converts "Women's Wear" to "womens-wear"
+ */
+function generateCategorySlug(category) {
+  return category
+    .toLowerCase()
+    .replace(/'/g, '') // Remove apostrophes
+    .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+}
+
+/**
+ * Ensure category-based shop exists for luxury products
+ */
+async function ensureCategoryShop(product, majorCategory) {
+  // Only create category shops for LUXURY products with categories
+  if (majorCategory !== "LUXURY" || !product.category) {
+    return null
+  }
+
+  const categorySlug = generateCategorySlug(product.category)
+  const shopSlug = `luxury-${categorySlug}`
+  
+  // Check if shop already exists
+  let shop = await Shop.findOne({ slug: shopSlug })
+  
+  if (!shop) {
+    // Ensure luxury-shop exists first (parent shop)
+    const parentShop = await Shop.findOne({ slug: "luxury-shop" })
+    if (!parentShop) {
+      console.warn("⚠️ Parent shop 'luxury-shop' doesn't exist. Creating it first...")
+      await Shop.create({
+        slug: "luxury-shop",
+        name: "Luxury Collection",
+        route: "/luxury/shop",
+        majorCategory: "LUXURY",
+        shopType: "BRAND_BASED",
+        criteria: {},
+        defaultSort: "newest",
+        hasSidebar: false,
+        hasBottomBar: false,
+        uiTheme: "luxury"
+      })
+    }
+    
+    // Create the shop
+    const shopName = `Luxury ${product.category}`
+    const route = `/luxury/shop/${categorySlug}`
+    
+    // Normalize category for matching (handle variations)
+    const categoryForMatch = product.category.toLowerCase().replace(/'/g, '').trim()
+    
+    try {
+      shop = await Shop.create({
+        slug: shopSlug,
+        name: shopName,
+        route: route,
+        majorCategory: "LUXURY",
+        shopType: "CATEGORY_BASED",
+        parentShopSlug: "luxury-shop",
+        criteria: {
+          categoryMatch: categoryForMatch
+        },
+        defaultSort: "newest",
+        hasSidebar: false,
+        hasBottomBar: false,
+        uiTheme: "luxury"
+      })
+      
+      console.log(`✅ Created category shop: ${shopSlug} for category: ${product.category}`)
+    } catch (error) {
+      // If shop creation fails (e.g., duplicate), just get the existing one
+      if (error.code === 11000) {
+        shop = await Shop.findOne({ slug: shopSlug })
+        console.log(`ℹ️ Shop ${shopSlug} already exists, using existing shop`)
+      } else {
+        console.error(`❌ Error creating shop ${shopSlug}:`, error.message)
+        throw error
+      }
+    }
+  }
+  
+  return shop
+}
+
 async function assignProductToShops(product) {
   // Ensure product has majorCategory set (fallback to AFFORDABLE if not set)
   let majorCategory = product.majorCategory
@@ -16,6 +102,9 @@ async function assignProductToShops(product) {
     product.majorCategory = majorCategory
   }
 
+  // Ensure category-based shop exists for luxury products
+  const categoryShop = await ensureCategoryShop(product, majorCategory)
+
   // Get all shops - products can match shops with matching majorCategory
   const shops = await Shop.find({
     majorCategory: product.majorCategory || majorCategory
@@ -28,6 +117,21 @@ async function assignProductToShops(product) {
     if (matchesShopCriteria(product, shop.criteria)) {
       matchedShopSlugs.push(shop.slug)
     }
+  }
+
+  // IMPORTANT: Ensure all LUXURY products with brand are assigned to luxury-shop
+  // Even if criteria is empty (which it is for luxury-shop), products should still be assigned
+  // This handles the case where luxury-shop has empty criteria but should include all luxury products
+  if (majorCategory === "LUXURY" && product.brand && product.brand.trim() !== '') {
+    if (!matchedShopSlugs.includes('luxury-shop')) {
+      matchedShopSlugs.push('luxury-shop')
+      console.log(`✅ Added luxury-shop to product ${product.name || product._id} (brand: ${product.brand})`)
+    }
+  }
+
+  // If product is trending, add "trending" shop to assigned shops
+  if (product.isTrending === true) {
+    matchedShopSlugs.push('trending')
   }
 
   // Remove duplicates (shouldn't be needed, but safe)

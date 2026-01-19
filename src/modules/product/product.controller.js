@@ -1,6 +1,28 @@
 const Product = require("./product.model")
+const Category = require("../category/category.model")
 const { getProductsByShop, createProduct: createProductService } = require("./product.service")
 const { ensureCategory } = require("../category/category.service")
+
+// Simple health check - count products
+exports.getProductCount = async (req, res) => {
+  try {
+    const totalCount = await Product.countDocuments({})
+    const activeCount = await Product.countDocuments({ isActive: true })
+    
+    res.json({
+      success: true,
+      total: totalCount,
+      active: activeCount,
+      inactive: totalCount - activeCount
+    })
+  } catch (err) {
+    console.error('Error getting product count:', err)
+    res.status(500).json({
+      success: false,
+      message: err.message
+    })
+  }
+}
 
 // GET all products (with filters and pagination)
 exports.getAllProducts = async (req, res) => {
@@ -81,7 +103,7 @@ exports.getAllProducts = async (req, res) => {
       popular: { reviews: -1, rating: -1 },
       "price-low": { price: 1 },
       "price-high": { price: -1 },
-      newest: { dateAdded: -1 },
+      newest: { createdAt: -1 }, // Use createdAt as primary for newest (more reliable)
       rating: { rating: -1 }
     }
 
@@ -89,15 +111,32 @@ exports.getAllProducts = async (req, res) => {
 
     const skip = (Number(page) - 1) * Number(limit)
 
-    const products = await Product.find(query, null, { allowDiskUse: true })
+    // Log query details for debugging
+    console.log('📊 getAllProducts query:', JSON.stringify(query, null, 2))
+    console.log('📊 Sort options:', JSON.stringify(sortQuery, null, 2))
+    console.log('📊 Pagination:', { page, limit, skip })
+    
+    const queryStartTime = Date.now()
+    
+    // Add query timeout (30 seconds) to prevent hanging
+    const products = await Product.find(query)
+      .allowDiskUse(true)
+      .maxTimeMS(30000) // 30 second timeout
       .sort(sortQuery)
       .skip(skip)
       .limit(Number(limit))
       .lean()
 
-    const total = await Product.countDocuments(query)
+    const queryTime = Date.now() - queryStartTime
+    console.log(`⏱️  Query took ${queryTime}ms, found ${products.length} products`)
 
-    res.json({
+    // Add timeout for count as well
+    const countStartTime = Date.now()
+    const total = await Product.countDocuments(query).maxTimeMS(30000)
+    const countTime = Date.now() - countStartTime
+    console.log(`⏱️  Count took ${countTime}ms, total: ${total}`)
+
+    const response = {
       success: true,
       data: products,
       pagination: {
@@ -106,11 +145,44 @@ exports.getAllProducts = async (req, res) => {
         total,
         pages: Math.ceil(total / Number(limit))
       }
-    })
+    }
+    
+    console.log(`✅ Returning ${products.length} products, total: ${total}`)
+    
+    res.json(response)
   } catch (err) {
+    // Log full error details for debugging
+    console.error('❌ Error in getAllProducts:', {
+      message: err.message,
+      name: err.name,
+      code: err.code,
+      stack: err.stack?.split('\n').slice(0, 3).join('\n')
+    })
+    
+    // Handle timeout errors gracefully
+    if (err.message && (err.message.includes('timeout') || err.message.includes('timed out') || err.name === 'MongoServerError')) {
+      console.error('Product query timeout/error:', err.message)
+      return res.status(500).json({
+        success: false,
+        message: 'Query timeout: The request took too long. Please try again with different filters or smaller page size.',
+        error: 'TIMEOUT'
+      })
+    }
+    
+    // Handle sort memory errors
+    if (err.message && err.message.includes('Sort exceeded memory limit')) {
+      console.error('⚠️ Sort memory limit error - indexes may still be building')
+      return res.status(500).json({
+        success: false,
+        message: 'Query is taking too long. Indexes may still be building. Please wait a moment and try again.',
+        error: 'SORT_MEMORY_LIMIT',
+        hint: 'Indexes are being created in the background. This should resolve automatically.'
+      })
+    }
+    
     res.status(500).json({
       success: false,
-      message: err.message
+      message: err.message || 'Internal server error'
     })
   }
 }
@@ -203,13 +275,15 @@ exports.getProductsByVendor = async (req, res) => {
     const sortQuery = sortOptions[sort] || sortOptions.popular
     const skip = (Number(page) - 1) * Number(limit)
 
-    const products = await Product.find(query, null, { allowDiskUse: true })
+    const products = await Product.find(query)
+      .allowDiskUse(true)
+      .maxTimeMS(30000) // 30 second timeout
       .sort(sortQuery)
       .skip(skip)
       .limit(Number(limit))
       .lean()
 
-    const total = await Product.countDocuments(query)
+    const total = await Product.countDocuments(query).maxTimeMS(30000)
 
     // Add SEO-friendly URLs to products
     const productsWithSeoUrl = products.map(product => ({
@@ -335,7 +409,7 @@ exports.getProductsByCategory = async (req, res) => {
       query.$or = categoryConditions
     }
     
-    // Add subcategory filter - handle slug to name conversion and partial matching
+      // Add subcategory filter - handle slug to name conversion and partial matching
     if (subcategorySlug) {
       const subcategoryConditions = [
         { subcategory: subcategorySlug },
@@ -368,11 +442,13 @@ exports.getProductsByCategory = async (req, res) => {
         })
       }
       
-      // Combine with category conditions if they exist
+      // IMPORTANT: Ensure category filter is maintained when filtering by subcategory
+      // This prevents men's-wear/jacket from showing women's jackets
+      // Combine with category conditions if they exist - use $and to ensure both category AND subcategory match
       if (query.$or) {
         query.$and = [
-          { $or: query.$or },
-          { $or: subcategoryConditions }
+          { $or: query.$or },  // Category conditions (e.g., "Men's Wear")
+          { $or: subcategoryConditions }  // Subcategory conditions (e.g., "Jackets")
         ]
         delete query.$or
       } else {
@@ -403,14 +479,16 @@ exports.getProductsByCategory = async (req, res) => {
     const sortQuery = sortOptions[sort] || sortOptions.popular
     const skip = (Number(page) - 1) * Number(limit)
 
-    const products = await Product.find(query, null, { allowDiskUse: true })
+    const products = await Product.find(query)
+      .allowDiskUse(true)
+      .maxTimeMS(30000) // 30 second timeout
       .sort(sortQuery)
       .skip(skip)
       .limit(Number(limit))
       .lean()
       .select('name slug baseSlug vendorSlug price originalPrice images brand category subcategory emoji isTrending rating reviews')
 
-    const total = await Product.countDocuments(query)
+    const total = await Product.countDocuments(query).maxTimeMS(30000)
 
     // Always return success, even if no products found
     res.json({
@@ -449,7 +527,9 @@ exports.getTrendingProducts = async (req, res) => {
     const products = await Product.find({
       isTrending: true,
       isActive: true
-    }, null, { allowDiskUse: true })
+    })
+      .allowDiskUse(true)
+      .maxTimeMS(30000) // 30 second timeout
       .sort({ reviews: -1, rating: -1 })
       .limit(Number(limit))
       .lean()
@@ -557,6 +637,11 @@ exports.updateProduct = async (req, res) => {
     const { id } = req.params
     const updateData = req.body
     
+    // If brand is being updated, set majorCategory automatically
+    if (updateData.brand !== undefined) {
+      updateData.majorCategory = (updateData.brand && updateData.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
+    }
+    
     // Find and update product
     const product = await Product.findByIdAndUpdate(
       id,
@@ -571,8 +656,9 @@ exports.updateProduct = async (req, res) => {
       })
     }
     
-    // Reassign to shops if price/category changed
-    if (updateData.price || updateData.category || updateData.majorCategory) {
+    // Reassign to shops if price/category/brand/isTrending changed
+    // Also reassign if brand changes (affects majorCategory)
+    if (updateData.price || updateData.category || updateData.brand || updateData.majorCategory || updateData.isTrending !== undefined) {
       const { assignProductToShops } = require("../assignment/assignment.service")
       await assignProductToShops(product)
     }

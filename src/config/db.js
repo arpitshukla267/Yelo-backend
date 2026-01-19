@@ -26,12 +26,19 @@ const connectDB = async (retries = 3, delay = 2000) => {
   
   // Connection options with better timeout and retry settings
   const options = {
-    serverSelectionTimeoutMS: 10000, // 10 seconds
-    socketTimeoutMS: 45000, // 45 seconds
-    connectTimeoutMS: 10000, // 10 seconds
-    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 30000, // 30 seconds
+    socketTimeoutMS: 120000, // 120 seconds (2 minutes) - increased for slow queries
+    connectTimeoutMS: 30000, // 30 seconds
+    maxPoolSize: 20, // Increased pool size
+    minPoolSize: 5, // Maintain minimum connections
     retryWrites: true,
+    retryReads: true,
+    // Heartbeat settings to keep connections alive
+    heartbeatFrequencyMS: 10000,
   }
+  
+  // Set Mongoose-specific buffer settings (not part of connection options)
+  mongoose.set('bufferCommands', false) // Disable mongoose buffering
   
   // Retry logic for connection
   for (let attempt = 1; attempt <= retries; attempt++) {

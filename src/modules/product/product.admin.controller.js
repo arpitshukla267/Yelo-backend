@@ -237,6 +237,27 @@ async function createCategoriesFromProducts(req, res) {
 }
 
 // Debug endpoint: Get product data with shop assignments
+// Check index status and ensure they're created
+async function checkIndexes(req, res) {
+  try {
+    const { ensureProductIndexes } = require('./ensure-indexes')
+    const result = await ensureProductIndexes()
+    
+    res.json({
+      success: true,
+      message: 'Indexes checked and ensured',
+      ...result
+    })
+  } catch (error) {
+    console.error('Error checking indexes:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check indexes',
+      error: error.message
+    })
+  }
+}
+
 async function getProductDebugData(req, res) {
   try {
     const { limit = 20, productId, category, productType } = req.query
@@ -317,6 +338,7 @@ module.exports = {
   createCategoriesFromProducts,
   seedShopsEndpoint,
   getProductDebugData,
+  checkIndexes,
   populateSubcategories,
   migrateCategories
 }

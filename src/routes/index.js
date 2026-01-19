@@ -29,5 +29,6 @@ router.use("/categories", require("../modules/category/category.routes"))
 router.use("/brands", require("../modules/brand/brand.routes"))
 router.use("/payment", require("../modules/payment/payment.routes"))
 router.use("/notifications", require("../modules/notification/notification.routes"))
+router.use("/upload", require("../modules/upload/upload.routes"))
 
 module.exports = router
