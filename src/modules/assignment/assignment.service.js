@@ -136,9 +136,48 @@ async function assignProductToShops(product) {
   // IMPORTANT: Ensure all AFFORDABLE products are assigned to appropriate shops
   // Even if they don't match specific criteria, they should at least be in the main "affordable" shop
   if (majorCategory === "AFFORDABLE") {
+    const productPrice = product.price || 0
+    
     // Ensure affordable products are in the main affordable shop if price <= 2000
-    if ((product.price || 0) <= 2000 && !matchedShopSlugs.includes('affordable')) {
+    if (productPrice <= 2000 && !matchedShopSlugs.includes('affordable')) {
       matchedShopSlugs.push('affordable')
+    }
+    
+    // Ensure products under ₹999 are assigned to "under-999" shop
+    if (productPrice <= 999 && !matchedShopSlugs.includes('under-999')) {
+      matchedShopSlugs.push('under-999')
+    }
+    
+    // Ensure products with discount are assigned to "offers" shop
+    const hasDiscount = product.discount > 0 || (product.originalPrice && product.originalPrice > product.price)
+    if (hasDiscount && productPrice <= 2000 && !matchedShopSlugs.includes('offers')) {
+      matchedShopSlugs.push('offers')
+    }
+    
+    // Ensure fresh products (added within 7 days) are assigned to "fresh-arrival" shop
+    const productDate = product.dateAdded || product.createdAt
+    if (productDate && productPrice <= 2000) {
+      const daysSinceAdded = (Date.now() - new Date(productDate)) / (1000 * 60 * 60 * 24)
+      if (daysSinceAdded <= 7 && !matchedShopSlugs.includes('fresh-arrival')) {
+        matchedShopSlugs.push('fresh-arrival')
+      }
+    }
+    
+    // Ensure products with discount added within 7 days are assigned to "todays-deal" shop
+    if (hasDiscount && productDate && productPrice <= 2000) {
+      const daysSinceAdded = (Date.now() - new Date(productDate)) / (1000 * 60 * 60 * 24)
+      if (daysSinceAdded <= 7 && !matchedShopSlugs.includes('todays-deal')) {
+        matchedShopSlugs.push('todays-deal')
+      }
+    }
+    
+    // Ensure best-selling products (rating >= 4, reviews >= 5) are assigned to "best-sellers" shop
+    if (productPrice <= 5000) {
+      const rating = product.rating || 0
+      const reviews = product.reviews || 0
+      if (rating >= 4 && reviews >= 5 && !matchedShopSlugs.includes('best-sellers')) {
+        matchedShopSlugs.push('best-sellers')
+      }
     }
   }
 
@@ -154,7 +193,9 @@ async function assignProductToShops(product) {
 
   // If product is trending, add "trending" shop to assigned shops
   if (product.isTrending === true) {
-    matchedShopSlugs.push('trending')
+    if (!matchedShopSlugs.includes('trending')) {
+      matchedShopSlugs.push('trending')
+    }
   }
 
   // Remove duplicates (shouldn't be needed, but safe)
