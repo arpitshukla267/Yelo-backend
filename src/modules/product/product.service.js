@@ -60,6 +60,20 @@ async function getProductsByShop({
     isActive: true
   }
 
+  // Exclude luxury products from affordable shops (unless shopSlug is a luxury shop)
+  if (!shopSlug.startsWith('luxury')) {
+    // For non-luxury shops, exclude products with brands (luxury products)
+    query.$and = [
+      {
+        $or: [
+          { brand: { $exists: false } },
+          { brand: null },
+          { brand: '' }
+        ]
+      }
+    ]
+  }
+
   // PRICE FILTER
   if (filters.minPrice || filters.maxPrice) {
     query.price = {}

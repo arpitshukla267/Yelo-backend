@@ -4,9 +4,7 @@ const Category = require("../category/category.model")
 // GET search suggestions - returns top 5 product names matching the search
 exports.getSearchSuggestions = async (req, res) => {
   try {
-    const { q } = req.query
-    
-    console.log('🔍 Search suggestions request:', q)
+    const { q, includeLuxury } = req.query
     
     if (!q || q.trim() === '') {
       return res.json({
@@ -16,12 +14,13 @@ exports.getSearchSuggestions = async (req, res) => {
     }
 
     const searchTerm = q.trim()
+    const shouldIncludeLuxury = includeLuxury === 'true' || includeLuxury === true
     
     // Simple case-insensitive regex pattern
     const searchPattern = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
     
-    // Search products - get top 5 matching product names
-    const products = await Product.find({
+    // Build query - exclude luxury products unless explicitly requested
+    const query = {
       isActive: true,
       $or: [
         { name: searchPattern },
@@ -29,13 +28,27 @@ exports.getSearchSuggestions = async (req, res) => {
         { category: searchPattern },
         { subcategory: searchPattern }
       ]
-    })
+    }
+    
+    // Exclude luxury products (products with brands) unless includeLuxury is true
+    if (!shouldIncludeLuxury) {
+      query.$and = [
+        {
+          $or: [
+            { brand: { $exists: false } },
+            { brand: null },
+            { brand: '' }
+          ]
+        }
+      ]
+    }
+    
+    // Search products - get top 5 matching product names
+    const products = await Product.find(query)
       .select('name brand category')
       .limit(5)
       .sort({ createdAt: -1 })
       .lean()
-    
-    console.log(`✅ Found ${products.length} products for search: "${q}"`)
     
     const suggestions = products.map(product => ({
       type: 'product',
@@ -60,9 +73,7 @@ exports.getSearchSuggestions = async (req, res) => {
 // GET comprehensive search - returns products, categories, and subcategories
 exports.comprehensiveSearch = async (req, res) => {
   try {
-    const { q } = req.query
-    
-    console.log('🔍 Comprehensive search request:', q)
+    const { q, includeLuxury } = req.query
     
     if (!q || q.trim() === '') {
       return res.json({
@@ -76,12 +87,13 @@ exports.comprehensiveSearch = async (req, res) => {
     }
 
     const searchTerm = q.trim()
+    const shouldIncludeLuxury = includeLuxury === 'true' || includeLuxury === true
     
     // Simple case-insensitive regex pattern
     const searchPattern = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
     
-    // Search products
-    const products = await Product.find({
+    // Build query - exclude luxury products unless explicitly requested
+    const productQuery = {
       isActive: true,
       $or: [
         { name: searchPattern },
@@ -90,7 +102,23 @@ exports.comprehensiveSearch = async (req, res) => {
         { subcategory: searchPattern },
         { description: searchPattern }
       ]
-    })
+    }
+    
+    // Exclude luxury products (products with brands) unless includeLuxury is true
+    if (!shouldIncludeLuxury) {
+      productQuery.$and = [
+        {
+          $or: [
+            { brand: { $exists: false } },
+            { brand: null },
+            { brand: '' }
+          ]
+        }
+      ]
+    }
+    
+    // Search products
+    const products = await Product.find(productQuery)
       .sort({ createdAt: -1 })
       .limit(100)
       .lean()
@@ -128,8 +156,6 @@ exports.comprehensiveSearch = async (req, res) => {
         })
       }
     })
-    
-    console.log(`✅ Comprehensive search results - Products: ${products.length}, Categories: ${categories.length}, Subcategories: ${subcategories.length}`)
     
     res.json({
       success: true,

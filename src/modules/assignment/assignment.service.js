@@ -89,10 +89,24 @@ async function ensureCategoryShop(product, majorCategory) {
 }
 
 async function assignProductToShops(product) {
-  // Ensure product has majorCategory set (fallback to AFFORDABLE if not set)
+  // Ensure product has majorCategory set correctly
+  // If product has a brand, it should be LUXURY (even if majorCategory was set incorrectly)
   let majorCategory = product.majorCategory
-  if (!majorCategory) {
-    majorCategory = (product.brand && product.brand.trim() !== '') ? "LUXURY" : "AFFORDABLE"
+  const hasBrand = product.brand && product.brand.trim() !== ''
+  
+  // If product has brand, it MUST be LUXURY (correct any misclassifications)
+  if (hasBrand && majorCategory !== "LUXURY") {
+    majorCategory = "LUXURY"
+    // Update the product in the database
+    await Product.updateOne(
+      { _id: product._id },
+      { majorCategory: majorCategory }
+    )
+    // Also update the product object so it's available for criteria matching
+    product.majorCategory = majorCategory
+  } else if (!majorCategory) {
+    // If no majorCategory set, infer from brand presence
+    majorCategory = hasBrand ? "LUXURY" : "AFFORDABLE"
     // Update the product in the database
     await Product.updateOne(
       { _id: product._id },
@@ -116,6 +130,15 @@ async function assignProductToShops(product) {
     // Check if product matches shop criteria
     if (matchesShopCriteria(product, shop.criteria)) {
       matchedShopSlugs.push(shop.slug)
+    }
+  }
+
+  // IMPORTANT: Ensure all AFFORDABLE products are assigned to appropriate shops
+  // Even if they don't match specific criteria, they should at least be in the main "affordable" shop
+  if (majorCategory === "AFFORDABLE") {
+    // Ensure affordable products are in the main affordable shop if price <= 2000
+    if ((product.price || 0) <= 2000 && !matchedShopSlugs.includes('affordable')) {
+      matchedShopSlugs.push('affordable')
     }
   }
 
