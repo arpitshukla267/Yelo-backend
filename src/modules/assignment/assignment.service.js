@@ -184,10 +184,30 @@ async function assignProductToShops(product) {
   // IMPORTANT: Ensure all LUXURY products with brand are assigned to luxury-shop
   // Even if criteria is empty (which it is for luxury-shop), products should still be assigned
   // This handles the case where luxury-shop has empty criteria but should include all luxury products
-  if (majorCategory === "LUXURY" && product.brand && product.brand.trim() !== '') {
-    if (!matchedShopSlugs.includes('luxury-shop')) {
-      matchedShopSlugs.push('luxury-shop')
-      console.log(`✅ Added luxury-shop to product ${product.name || product._id} (brand: ${product.brand})`)
+  if (majorCategory === "LUXURY") {
+    // If product has a brand, it MUST be in luxury-shop
+    if (product.brand && product.brand.trim() !== '') {
+      if (!matchedShopSlugs.includes('luxury-shop')) {
+        matchedShopSlugs.push('luxury-shop')
+        console.log(`✅ Added luxury-shop to product ${product.name || product._id} (brand: ${product.brand})`)
+      }
+    }
+    // Also ensure luxury-shop exists in database (safety check)
+    const luxuryShop = await Shop.findOne({ slug: 'luxury-shop' })
+    if (!luxuryShop) {
+      console.warn('⚠️ luxury-shop does not exist! Creating it...')
+      await Shop.create({
+        slug: "luxury-shop",
+        name: "Luxury Collection",
+        route: "/luxury/shop",
+        majorCategory: "LUXURY",
+        shopType: "BRAND_BASED",
+        criteria: {},
+        defaultSort: "newest",
+        hasSidebar: false,
+        hasBottomBar: false,
+        uiTheme: "luxury"
+      })
     }
   }
 
