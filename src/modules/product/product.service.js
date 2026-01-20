@@ -59,14 +59,14 @@ async function getProductsByShop({
   let query = {}
   if (shopSlug.startsWith('luxury')) {
     // For luxury shops, include products assigned to shop OR products with brands (luxury products)
+    // Luxury products are identified by having a brand name (not null/empty)
     query = {
       isActive: true,
       $or: [
         { assignedShops: shopSlug },
         // Fallback: include products with brands if they're not assigned (safety measure)
         { 
-          brand: { $exists: true, $ne: null, $ne: '' },
-          majorCategory: 'LUXURY'
+          brand: { $exists: true, $ne: null, $ne: '' }
         }
       ]
     }
