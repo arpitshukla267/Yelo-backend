@@ -55,23 +55,36 @@ async function getProductsByShop({
 
   const sortQuery = SORT_MAP[sort] || SORT_MAP.popular
 
-  const query = {
-    assignedShops: shopSlug,
-    isActive: true
-  }
-
-  // Exclude luxury products from affordable shops (unless shopSlug is a luxury shop)
-  if (!shopSlug.startsWith('luxury')) {
-    // For non-luxury shops, exclude products with brands (luxury products)
-    query.$and = [
-      {
-        $or: [
-          { brand: { $exists: false } },
-          { brand: null },
-          { brand: '' }
-        ]
-      }
-    ]
+  // For luxury shops, include products assigned to the shop OR products with brands (safety fallback)
+  let query = {}
+  if (shopSlug.startsWith('luxury')) {
+    // For luxury shops, include products assigned to shop OR products with brands (luxury products)
+    query = {
+      isActive: true,
+      $or: [
+        { assignedShops: shopSlug },
+        // Fallback: include products with brands if they're not assigned (safety measure)
+        { 
+          brand: { $exists: true, $ne: null, $ne: '' },
+          majorCategory: 'LUXURY'
+        }
+      ]
+    }
+  } else {
+    // For non-luxury shops, only products assigned to the shop AND without brands
+    query = {
+      assignedShops: shopSlug,
+      isActive: true,
+      $and: [
+        {
+          $or: [
+            { brand: { $exists: false } },
+            { brand: null },
+            { brand: '' }
+          ]
+        }
+      ]
+    }
   }
 
   // PRICE FILTER
@@ -101,7 +114,17 @@ async function getProductsByShop({
   }
 
   const skip = (Number(page) - 1) * Number(limit)
+  
+  // Debug logging for luxury shop queries
+  if (shopSlug.startsWith('luxury')) {
+    console.log(`🔍 Luxury shop query for "${shopSlug}":`, JSON.stringify(query, null, 2))
+  }
+  
   const total = await Product.countDocuments(query).maxTimeMS(30000)
+  
+  if (shopSlug.startsWith('luxury')) {
+    console.log(`📊 Found ${total} products for luxury shop "${shopSlug}"`)
+  }
 
   const products = await Product.find(query)
     .allowDiskUse(true)
@@ -110,7 +133,7 @@ async function getProductsByShop({
     .skip(skip)
     .limit(Number(limit))
     .lean()
-    .select('name slug baseSlug vendorSlug price originalPrice discount images brand category subcategory emoji isTrending rating reviews stock colors sizes _id')
+    .select('name slug baseSlug vendorSlug price originalPrice discount images brand category subcategory emoji isTrending rating reviews stock colors sizes _id dateAdded createdAt')
 
   // Add SEO-friendly URLs to products
   const productsWithSeoUrl = products.map(product => ({

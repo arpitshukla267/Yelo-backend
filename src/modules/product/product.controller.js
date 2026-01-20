@@ -327,6 +327,7 @@ exports.getProductsByShop = async (req, res) => {
 
     res.json({
       success: true,
+      products: result.products || [], // Also include 'products' key for frontend compatibility
       data: result.products || [],
       pagination: result.pagination || {
         page: Number(page),
